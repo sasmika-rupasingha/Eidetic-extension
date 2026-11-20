@@ -1,11 +1,14 @@
 /** The side panel: Capture · Library · Ask, with the capture result as a screen inside Capture. */
 import { useCallback, useEffect, useState } from 'react';
-import { AccessError, activeTab, captureTab, saveBlob, SESSION_LATEST, type LatestCapture } from '../../capture/capture';
+import { AccessError, activeTab, captureTab, saveBlob, SESSION_LATEST, type CaptureOptions, type LatestCapture } from '../../capture/capture';
 import { readyMap } from '../../ai/run';
 import { expireTemporary } from '../../store/captures';
 import { PROVIDER_INFO, updateSettings } from '../../store/settings';
 import { IconAsk, IconCapture, IconExpand, IconLibrary, IconSettings, Logo } from '../design/icons';
 import { Toast } from '../shared/components';
+import { useEmbeddingBackfill } from '../shared/useMeaning';
+import { startWatch } from '../../monitor/watch';
+import { originOf } from '../../monitor/monitor';
 import { useCapture, useCaptures, useSettings, useStatuses, useToast } from '../shared/hooks';
 import { ResultView } from '../shared/ResultView';
 import { AskView } from './AskView';
@@ -27,6 +30,7 @@ export function App() {
   const [access, setAccess] = useState<AccessHelp | null>(null);
   const [captureError, setCaptureError] = useState<string | null>(null);
   const resultCap = useCapture(view.name === 'result' ? view.id : null);
+  useEmbeddingBackfill(settings, statuses, captures);
 
   /** One message for an access failure: the access help (never also the red error card). */
   const showAccess = useCallback(async (mode: 'area' | 'full') => {
@@ -65,13 +69,13 @@ export function App() {
   }, [settings?.tempDays]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const capture = useCallback(
-    async (mode: 'area' | 'full') => {
+    async (mode: 'area' | 'full', opts: CaptureOptions = {}) => {
       setAccess(null);
       setCaptureError(null);
       const tab = await activeTab();
       if (!tab) return show('No web page to capture in this window.');
       try {
-        await captureTab(tab, mode);
+        await captureTab(tab, mode, opts);
       } catch (e) {
         setSelecting(false);
         if (e instanceof AccessError) {
@@ -82,7 +86,7 @@ export function App() {
           } catch {
             origin = null;
           }
-          if (origin && (await chrome.permissions.request({ origins: [origin] }).catch(() => false))) return void capture(mode);
+          if (origin && (await chrome.permissions.request({ origins: [origin] }).catch(() => false))) return void capture(mode, opts);
           await showAccess(mode);
         } else {
           console.warn('Eidetic capture failed:', e);
@@ -92,6 +96,21 @@ export function App() {
     },
     [show, showAccess],
   );
+
+  /** "Watch part of this page": access to this site (needed to check it later), then point at the part to watch. */
+  const watch = useCallback(async () => {
+    const tab = await activeTab();
+    if (!tab) return show('No web page to watch in this window.');
+    const origin = tab.url ? originOf(tab.url) : null;
+    if (!origin) return show('Eidetic can’t see this page’s address yet. Right-click the page and choose “Watch part of this page for changes”.');
+    if (!(await chrome.permissions.contains({ origins: [origin] }).catch(() => false)) && !(await chrome.permissions.request({ origins: [origin] }).catch(() => false))) return show('Eidetic needs access to this site to check it for changes.');
+    try {
+      const m = await startWatch(tab);
+      if (m) show(`Watching “${(m.title || m.site).slice(0, 40)}”. See Monitor in the workspace.`);
+    } catch (e) {
+      show((e as Error).message || 'Couldn’t start watching this page.');
+    }
+  }, [show]);
 
   /** "Allow on all sites": ask Chrome, then carry straight on with the capture the user wanted. */
   const allowAll = useCallback(async () => {
@@ -152,7 +171,7 @@ export function App() {
 
       <main className="p-main">
         {!settings.onboarded ? <Onboarding aiReady={aiReady} onDone={() => void updateSettings((s) => void (s.onboarded = true))} onAi={() => openWorkspace('/settings/ai')} /> : null}
-        {view.name === 'home' ? <Home captures={captures} selecting={selecting} access={access} captureError={captureError} onDismissError={() => setCaptureError(null)} onCapture={capture} onAllowAll={allowAll} onOpen={(id) => setView({ name: 'result', id })} onLibrary={() => setView({ name: 'library' })} toast={show} /> : null}
+        {view.name === 'home' ? <Home captures={captures} selecting={selecting} access={access} captureError={captureError} onDismissError={() => setCaptureError(null)} onCapture={capture} onAllowAll={allowAll} onWatch={() => void watch()} onOpen={(id) => setView({ name: 'result', id })} onLibrary={() => setView({ name: 'library' })} toast={show} /> : null}
         {view.name === 'result' ? (
           resultCap ? (
             <>
@@ -161,13 +180,13 @@ export function App() {
                   ‹ Capture
                 </button>
               </div>
-              <ResultView capture={resultCap} settings={settings} statuses={statuses} toast={show} onDeleted={() => setView({ name: 'home' })} />
+              <ResultView capture={resultCap} settings={settings} statuses={statuses} toast={show} onDeleted={() => setView({ name: 'home' })} onOpen={(id) => setView({ name: 'result', id })} onRecapture={(opts) => void capture('area', opts)} />
             </>
           ) : resultCap === null ? (
             <div className="empty">This capture was deleted.</div>
           ) : null
         ) : null}
-        {view.name === 'library' ? <LibraryView captures={captures} onOpen={(id) => setView({ name: 'result', id })} onWorkspace={() => openWorkspace('/library')} /> : null}
+        {view.name === 'library' ? <LibraryView captures={captures} settings={settings} statuses={statuses} onOpen={(id) => setView({ name: 'result', id })} onWorkspace={() => openWorkspace('/library')} /> : null}
         {view.name === 'ask' ? <AskView captures={captures} settings={settings} statuses={statuses} toast={show} onOpen={(id) => setView({ name: 'result', id })} /> : null}
       </main>
 

@@ -3,6 +3,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { cachedStatuses, refreshStatuses, type Statuses } from '../../ai/run';
 import { getCapture, getImage, listCaptures, onCapturesChanged, type Capture } from '../../store/captures';
 import { loadSettings, onSettingsChanged, type Settings } from '../../store/settings';
+import type { RecordStore } from '../../store/captures';
+import { onRecordsChanged } from '../../store/records';
+import { listWorkspaces } from '../../store/workspaces';
+import { listNotebooks } from '../../study/notebook';
+import { listMonitors } from '../../monitor/monitor';
 import { applyTheme } from '../theme';
 
 export function useSettings(): Settings | null {
@@ -145,3 +150,25 @@ export const timeAgo = (t: number, now = Date.now()) => {
   if (y.toDateString() === d.toDateString()) return `Yesterday ${hm}`;
   return d.toLocaleDateString([], { day: 'numeric', month: 'short', ...(d.getFullYear() !== new Date(now).getFullYear() ? { year: 'numeric' } : {}) });
 };
+
+/** Records from one of the small stores (workspaces, notebooks, monitors), kept in sync across pages. */
+export function useRecords<T>(load: () => Promise<T[]>, store: RecordStore): T[] | null {
+  const [list, setList] = useState<T[] | null>(null);
+  useEffect(() => {
+    let live = true;
+    const go = () => void load().then((v) => live && setList(v)).catch(() => live && setList([]));
+    go();
+    const off = onRecordsChanged((s) => s === store && go());
+    return () => {
+      live = false;
+      off();
+    };
+  }, [store]); // eslint-disable-line react-hooks/exhaustive-deps
+  return list;
+}
+
+export const useWorkspaces = () => useRecords(listWorkspaces, 'workspaces');
+
+export const useNotebooks = () => useRecords(listNotebooks, 'notebooks');
+
+export const useMonitors = () => useRecords(listMonitors, 'monitors');

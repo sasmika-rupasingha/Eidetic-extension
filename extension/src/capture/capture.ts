@@ -72,7 +72,7 @@ async function setLatest(v: LatestCapture): Promise<void> {
 }
 
 /** Saves an image (a crop, a pasted image or a file) as a new capture. */
-export async function saveImage(dataUrl: string, w: number, h: number, source: Capture['source'], extra: { video?: VideoMoment; needsCrop?: boolean } = {}): Promise<Capture> {
+export async function saveImage(dataUrl: string, w: number, h: number, source: Capture['source'], extra: { video?: VideoMoment; needsCrop?: boolean; area?: Capture['area']; compareTo?: string } = {}): Promise<Capture> {
   const blob = await dataUrlToBlob(dataUrl);
   const cap = await addCapture({ image: blob, w, h, thumb: await thumbnail(dataUrl, 320), source, ...extra });
   await setLatest({ id: cap.id, at: Date.now() });
@@ -91,7 +91,14 @@ export async function saveBlob(blob: Blob, source: Capture['source']): Promise<C
  * Captures an area (or the whole visible tab) of `tab`. Resolves to the new capture, or null if cancelled.
  * Throws AccessError when Eidetic may not capture this page yet.
  */
-export async function captureTab(tab: chrome.tabs.Tab, mode: 'area' | 'full' = 'area'): Promise<Capture | null> {
+export interface CaptureOptions {
+  /** Start the overlay with this box (Capture & Compare on the same page). */
+  preset?: { x: number; y: number; w: number; h: number; vw?: number; vh?: number } | null;
+  /** The capture this new one is compared with. */
+  compareTo?: string;
+}
+
+export async function captureTab(tab: chrome.tabs.Tab, mode: 'area' | 'full' = 'area', opts: CaptureOptions = {}): Promise<Capture | null> {
   if (!tab.id || tab.windowId === undefined) throw new Error('No tab to capture.');
   if (tab.url && RESTRICTED.test(tab.url)) throw new Error('Browser pages and extension stores can’t be captured. Open a normal web page.');
   await setLatest({ selecting: true, at: Date.now() });
@@ -103,11 +110,11 @@ export async function captureTab(tab: chrome.tabs.Tab, mode: 'area' | 'full' = '
       const bmp = await createImageBitmap(await dataUrlToBlob(shot));
       const size = { w: bmp.width, h: bmp.height };
       bmp.close();
-      return await saveImage(shot, size.w, size.h, pageSource(tab.url ?? '', tab.title ?? ''));
+      return await saveImage(shot, size.w, size.h, pageSource(tab.url ?? '', tab.title ?? ''), opts.compareTo ? { compareTo: opts.compareTo } : {});
     }
     let picked: OverlayResult | null;
     try {
-      const [res] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: captureOverlay, args: [shot, OVERLAY_ACCENT[settings.accent]] });
+      const [res] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: captureOverlay, args: [shot, OVERLAY_ACCENT[settings.accent], opts.preset ?? null] });
       picked = (res?.result ?? null) as OverlayResult | null;
     } catch (e) {
       if (isAccessError(e) && !tab.url) throw new AccessError();
@@ -116,7 +123,7 @@ export async function captureTab(tab: chrome.tabs.Tab, mode: 'area' | 'full' = '
       const bmp = await createImageBitmap(await dataUrlToBlob(shot));
       const size = { w: bmp.width, h: bmp.height };
       bmp.close();
-      return await saveImage(shot, size.w, size.h, pageSource(tab.url ?? '', tab.title ?? ''), { needsCrop: true });
+      return await saveImage(shot, size.w, size.h, pageSource(tab.url ?? '', tab.title ?? ''), { needsCrop: true, ...(opts.compareTo ? { compareTo: opts.compareTo } : {}) });
     }
     if (!picked) {
       await setLatest({ cancelled: true, at: Date.now() });
@@ -126,7 +133,7 @@ export async function captureTab(tab: chrome.tabs.Tab, mode: 'area' | 'full' = '
     const video: VideoMoment | undefined = picked.video
       ? { time: picked.video.time, ...(picked.video.duration ? { duration: picked.video.duration } : {}), title: picked.video.title, url: picked.video.url, resumeUrl: resumeUrl(picked.video.url, picked.video.time) }
       : undefined;
-    return await saveImage(crop.dataUrl, crop.w, crop.h, pageSource(picked.url, picked.title), video ? { video } : {});
+    return await saveImage(crop.dataUrl, crop.w, crop.h, pageSource(picked.url, picked.title), { ...(video ? { video } : {}), area: { rect: picked.rect, viewport: picked.viewport }, ...(opts.compareTo ? { compareTo: opts.compareTo } : {}) });
   } catch (e) {
     await setLatest({ error: (e as Error).message, ...(e instanceof AccessError ? { access: true as const } : {}), at: Date.now() });
     throw e;

@@ -8,7 +8,9 @@ import { localOnly, readyMap, runAi, type Statuses } from '../ai/run';
 import { classify } from '../detect/classify';
 import { recognize, type OcrProgress } from '../ocr/ocr';
 import { readQr } from '../ocr/qr';
+import { linkRelated } from '../memory/link';
 import { findSensitive } from '../privacy/detect';
+import { dhashBlob } from '../shared/dhash';
 import { blobToDataUrl } from '../shared/image';
 import { getCapture, getImage, updateCapture, type Capture } from '../store/captures';
 import { OCR_LANGUAGES, type Settings } from '../store/settings';
@@ -28,17 +30,20 @@ export function processCapture(id: string, s: Settings, onProgress?: OcrProgress
       if (!blob) throw new Error('The image of this capture is missing.');
       const dataUrl = await blobToDataUrl(blob);
       const langs = cap.ocrLangs?.length ? cap.ocrLangs : s.ocrLanguages;
-      const [ocr, qr] = await Promise.all([recognize(dataUrl, langs, onProgress), readQr(dataUrl)]);
+      const [ocr, qr, hash] = await Promise.all([recognize(dataUrl, langs, onProgress), readQr(dataUrl), dhashBlob(blob).catch(() => undefined)]);
       const detection = classify({ text: ocr.text, lines: ocr.lines, qr, source: { title: cap.source.title, site: cap.source.site } });
       const findings = findSensitive(ocr.text, ocr.lines);
-      return await updateCapture(id, (c) => {
+      const saved = await updateCapture(id, (c) => {
         c.ocr = { text: ocr.text, langs: ocr.langs, confidence: ocr.confidence, lines: ocr.lines };
         c.qr = qr;
         c.detection = detection;
         c.privacy = { findings };
+        if (hash) c.hash = hash;
         c.processing = 'done';
         delete c.error;
       });
+      await linkRelated(id).catch(() => undefined);
+      return saved;
     } catch (e) {
       return updateCapture(id, (c) => {
         c.processing = 'error';
@@ -70,6 +75,7 @@ export async function rereadCapture(id: string, code: string): Promise<Capture |
     c.ocrLangs = readingLanguages(code);
     c.processing = 'new';
     c.ai = {};
+    delete c.embedding;
     delete c.error;
   });
 }
@@ -86,7 +92,9 @@ export async function refineLocally(id: string, s: Settings, statuses: Statuses)
     if (!r) return;
     await updateCapture(id, (c) => {
       c.ai = { ...c.ai, description: r.description, keywords: r.keywords, topics: r.topics, model: run.route.model, local: true, at: Date.now() };
+      delete c.embedding; // describes the old description; computed again in the background
     });
+    await linkRelated(id).catch(() => undefined);
   } catch {
     /* refinement is optional */
   }

@@ -5,7 +5,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { actionsFor, type ActionDef } from '../../actions/registry';
 import { readingLanguages, refineLocally, processCapture, rereadCapture } from '../../capture/pipeline';
-import { formatTime } from '../../capture/capture';
+import { activeTab, captureTab, formatTime, type CaptureOptions } from '../../capture/capture';
+import { recaptureOptions } from '../../compare/changes';
+import { pageKey } from '../../memory/related';
+import { ChangesView } from './ChangesView';
 import { readyMap, type Statuses } from '../../ai/run';
 import { PRIVACY_LABEL, PRIVACY_NOUN } from '../../privacy/detect';
 import { deleteCaptures, formatNumber, updateCapture, type Capture } from '../../store/captures';
@@ -15,12 +18,16 @@ import { Markdown } from './markdown';
 import { CropMarks, Dialog, Menu } from './components';
 import { CropPicker } from './CropPicker';
 import { HideAreas } from './HideAreas';
-import { timeAgo, useImageUrl } from './hooks';
+import { Related } from './Related';
+import { StudyMaker } from './StudyMaker';
+import { useWorkspaces } from './hooks';
+import { moveTo, WorkspaceSelect } from './WorkspaceTag';
+import { timeAgo, useCapture, useImageUrl } from './hooks';
 import { previewRoute, routeLine, useActions } from './useActions';
 
 const workspaceUrl = (hash: string) => chrome.runtime.getURL(`workspace.html#${hash}`);
 
-export function ResultView({ capture, settings, statuses, toast, wide = false, onDeleted }: { capture: Capture; settings: Settings; statuses: Statuses; toast: (m: string) => void; wide?: boolean; onDeleted?: () => void }) {
+export function ResultView({ capture, settings, statuses, toast, wide = false, onDeleted, onOpen, onRecapture }: { capture: Capture; settings: Settings; statuses: Statuses; toast: (m: string) => void; wide?: boolean; onDeleted?: () => void; onOpen?: (id: string) => void; onRecapture?: (opts: CaptureOptions) => void }) {
   const c = capture;
   const imgUrl = useImageUrl(c.image.blobId, c.image.bytes);
   const { answer, run, followUp, stop, safeImage } = useActions(c, settings, statuses, toast);
@@ -35,6 +42,20 @@ export function ResultView({ capture, settings, statuses, toast, wide = false, o
   const answerRef = useRef<HTMLElement>(null);
   const findings = c.privacy?.findings ?? [];
   const [chosen, setChosen] = useState<boolean[]>([]);
+  const workspaces = useWorkspaces();
+  const baseline = useCapture(c.compareTo ?? null);
+  const recapture = async () => {
+    const tab = await activeTab().catch(() => undefined);
+    const opts = recaptureOptions(c, tab?.url, (a, b) => Boolean(pageKey(a)) && pageKey(a) === pageKey(b));
+    if (onRecapture) return onRecapture(opts);
+    if (!tab) return toast('Open the page in a tab first.');
+    try {
+      await chrome.tabs.update(tab.id!, { active: true });
+      await captureTab(tab, 'area', opts);
+    } catch (e) {
+      toast((e as Error).message || 'Couldn’t capture that page.');
+    }
+  };
 
   useEffect(() => setNote(c.notes), [c.id, c.notes]);
   useEffect(() => setChosen(findings.map(() => true)), [c.id, findings.length]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -121,6 +142,8 @@ export function ResultView({ capture, settings, statuses, toast, wide = false, o
           onClose={() => setShowHide(false)}
         />
       ) : null}
+
+      {baseline ? <ChangesView baseline={baseline} current={c} /> : null}
 
       {c.processing === 'reading' || (c.processing === 'new' && !c.needsCrop) ? (
         <div className="note" role="status">
@@ -356,6 +379,8 @@ export function ResultView({ capture, settings, statuses, toast, wide = false, o
         </details>
       ) : null}
 
+      <Related capture={c} onOpen={onOpen ?? ((id) => (location.hash = `/capture/${id}`))} />
+
       {c.ocr ? (
         <section className="textblock">
           <div className="answer-head">
@@ -418,6 +443,17 @@ export function ResultView({ capture, settings, statuses, toast, wide = false, o
         />
       </section>
 
+      {c.ocr?.text.trim() ? (
+        <details className="study">
+          <summary className="h-section">Study: flashcards and quiz</summary>
+          <StudyMaker captures={[c]} settings={settings} statuses={statuses} toast={toast} workspaceId={c.workspaceId} />
+        </details>
+      ) : null}
+
+      {workspaces?.length ? (
+        <WorkspaceSelect id={`ws-${c.id}`} value={c.workspaceId ?? ''} workspaces={workspaces} onChange={(v) => void moveTo([c.id], v).then(() => toast(v ? `Moved to ${workspaces.find((w) => w.id === v)?.name}` : 'Removed from the workspace'))} />
+      ) : null}
+
       <div className="result-foot">
         <span className="small muted">
           {formatNumber(c.number)} · {c.status === 'kept' || c.pinned ? 'Kept: never removed automatically' : daysLeft === null ? 'Temporary' : `Temporary · removed in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`}
@@ -425,6 +461,9 @@ export function ResultView({ capture, settings, statuses, toast, wide = false, o
         <span className="row-gap">
           <button type="button" className="btn small" aria-pressed={c.pinned} onClick={() => void updateCapture(c.id, (x) => void (x.pinned = !x.pinned))}>
             {c.pinned ? 'Unpin' : 'Pin'}
+          </button>
+          <button type="button" className="btn small" data-testid="recapture" title="Take a new capture of the same area and see what changed" onClick={() => void recapture()}>
+            Compare with a new capture
           </button>
           {c.status !== 'kept' ? (
             <button type="button" className="btn small soft" onClick={() => void updateCapture(c.id, (x) => void (x.status = 'kept')).then(() => toast('Kept'))}>

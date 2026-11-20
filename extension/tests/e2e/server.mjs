@@ -32,8 +32,23 @@ export function makePdf(lines) {
   return Buffer.from(out, 'latin1');
 }
 
+// A tiny "embedding model": one dimension per concept, so a query can match by meaning without sharing a word.
+const CONCEPTS = [
+  /table|accuracy|recall|results|scores|spreadsheet|model/i,
+  /error|traceback|pandas|python|module|crash|bug/i,
+  /symposium|event|conference|seminar|auditorium|poster/i,
+  /email|api key|config|secret|password/i,
+];
+export function conceptVector(text) {
+  const v = CONCEPTS.map((re) => ((String(text).match(new RegExp(re.source, 'gi')) ?? []).length ? 1 : 0));
+  v.push(0.05);
+  const n = Math.hypot(...v);
+  return v.map((x) => x / n);
+}
+
 export function startServers(port, videoPath) {
   const requests = [];
+  const visits = {};
   const pages = {
     '/error': page('Training script', `<pre id="target">Traceback (most recent call last):\n  File "train.py", line 3, in &lt;module&gt;\n    import pandas as pd\nModuleNotFoundError: No module named 'pandas'</pre>`),
     '/table': page('Results', `<div id="target"><table><tr><td>Model</td><td>Accuracy</td><td>Recall</td></tr><tr><td>CNN</td><td>0.91</td><td>0.89</td></tr><tr><td>SVM</td><td>0.84</td><td>0.80</td></tr><tr><td>Forest</td><td>0.87</td><td>0.85</td></tr></table></div>`),
@@ -45,6 +60,15 @@ export function startServers(port, videoPath) {
   // Mock answers by task, so the run can check that the right prompt reached the right model.
   const reply = (body) => {
     const text = JSON.stringify(body.messages ?? body.contents ?? '');
+    if (text.includes('\\"flashcards\\"'))
+      return JSON.stringify({
+        flashcards: [{ q: 'Which model is most accurate?', a: 'The CNN (0.91)' }, { q: 'What is recall for SVM?', a: '0.80' }],
+        quiz: [
+          { q: 'Which model has the highest accuracy?', options: ['CNN', 'SVM', 'Forest', 'None'], answer: 0, explain: 'CNN has 0.91.' },
+          { q: 'What is the recall of the Forest?', options: ['0.80', '0.85', '0.89', '0.91'], answer: 1, explain: 'The table says 0.85.' },
+        ],
+      });
+    if (text.includes('Suggest what to study next')) return '**Practise reading recall** from results tables.';
     if (text.includes('Return JSON only'))
       return JSON.stringify(text.includes('Symposium') ? { description: 'Poster for the AI Research Symposium on 12 December', keywords: ['symposium'], topics: ['Events'] } : text.includes('pandas') ? { description: 'Python script fails because pandas is not installed', keywords: ['pandas', 'python'], topics: ['Python errors'] } : { description: 'Results table comparing three models', keywords: ['accuracy'], topics: ['Machine learning'] });
     if (text.includes('Say OK')) return 'OK';
@@ -79,10 +103,15 @@ export function startServers(port, videoPath) {
     if (req.method === 'OPTIONS') return res.end();
     // ---- mock Ollama
     if (url.pathname === '/api/tags')
-      return res.end(JSON.stringify({ models: [{ name: 'qwen2.5:7b', size: 4683087332, details: { parameter_size: '7.6B', families: ['qwen2'] } }, { name: 'llava:7b', size: 4733363377, details: { parameter_size: '7B', families: ['llama', 'clip'] } }] }));
+      return res.end(JSON.stringify({ models: [{ name: 'qwen2.5:7b', size: 4683087332, details: { parameter_size: '7.6B', families: ['qwen2'] } }, { name: 'llava:7b', size: 4733363377, details: { parameter_size: '7B', families: ['llama', 'clip'] } }, { name: 'nomic-embed-text:latest', size: 274302450, details: { parameter_size: '137M', families: ['nomic-bert'] } }] }));
     if (url.pathname === '/api/show') {
       const body = await readBody(req);
       return res.end(JSON.stringify({ capabilities: body.model?.startsWith('llava') ? ['completion', 'vision'] : ['completion', 'tools'], model_info: { 'general.context_length': body.model?.startsWith('llava') ? 4096 : 32768 } }));
+    }
+    if (url.pathname === '/api/embed' && req.method === 'POST') {
+      const body = await readBody(req);
+      requests.push({ via: 'ollama-embed', model: body.model, body });
+      return res.end(JSON.stringify({ model: body.model, embeddings: (Array.isArray(body.input) ? body.input : [body.input]).map(conceptVector) }));
     }
     if (url.pathname === '/v1/chat/completions' && req.method === 'POST') {
       const body = await readBody(req);
@@ -114,6 +143,14 @@ export function startServers(port, videoPath) {
     if (url.pathname === '/scan.pdf') {
       res.setHeader('content-type', 'application/pdf');
       return res.end(makePdf(['SCANNED NOTICE', 'Exam hall B12', 'Starts 9.00 am']));
+    }
+    // A page that changes on every load (Capture & Compare, website monitoring).
+    if (url.pathname === '/change' || url.pathname === '/monitor') {
+      const n = (visits[url.pathname] = (visits[url.pathname] ?? 0) + 1);
+      const fee = n === 1 ? '$1,200' : '$1,350';
+      const extra = n === 1 ? '' : '<br>Late fee applies';
+      res.setHeader('content-type', 'text/html; charset=utf-8');
+      return res.end(page('Course fees', `<div id="target" class="big"><span id="fees">Course fees<br>Tuition: ${fee} per term${extra}</span></div><p id="other">Visit ${n}</p>`));
     }
     if (pages[url.pathname]) {
       res.setHeader('content-type', 'text/html; charset=utf-8');

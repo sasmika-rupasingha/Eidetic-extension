@@ -24,7 +24,9 @@ export function manifest(target, version) {
     action: { default_title: 'Open Eidetic', default_icon: { 16: 'icons/icon-16.png', 32: 'icons/icon-32.png' } },
     // Least privilege: no "tabs", no content scripts. A page is reachable only after the icon, a shortcut or the
     // right-click menu (activeTab), or after the user allows that one site from the panel (optional host permission).
-    permissions: ['activeTab', 'scripting', 'storage', 'unlimitedStorage', 'contextMenus'],
+    // alarms: website monitoring checks on a schedule (v3). Notifications only if the user turns them on.
+    permissions: ['activeTab', 'scripting', 'storage', 'unlimitedStorage', 'contextMenus', 'alarms'],
+    optional_permissions: ['notifications'],
     optional_host_permissions: [...PROVIDER_HOSTS, '<all_urls>'],
     commands: {
       _execute_action: { suggested_key: { default: 'Alt+Shift+M' }, description: 'Open Eidetic' },
@@ -39,7 +41,8 @@ export function manifest(target, version) {
     return {
       ...base,
       minimum_chrome_version: '120',
-      permissions: [...base.permissions, 'sidePanel'],
+      // offscreen: reads watched pages with DOMParser (the service worker has no DOM).
+      permissions: [...base.permissions, 'sidePanel', 'offscreen'],
       side_panel: { default_path: 'panel.html' },
       background: { service_worker: 'background.js', type: 'module' },
     };

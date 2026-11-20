@@ -36,6 +36,10 @@ Change them at `chrome://extensions/shortcuts`.
 
 **First capture on a site:** Chrome only shows a page to an extension after you click its toolbar icon on that page, use the shortcut or the right-click menu. If you press the panel's Capture button on a page Eidetic can't see yet, the panel tells you the two ways in (shortcut on the page, or Allow on all sites). If Eidetic is already allowed on all sites and a page still can't be captured, the panel says why instead: Chrome never lets extensions capture the new tab page, `chrome://` pages or the Web Store; files opened from your computer (`file://`) also need **Allow access to file URLs** in Eidetic's details on `chrome://extensions`, and Chrome's site settings or an organisation policy can block extensions on a site.
 
+**Watching a page (v3):** open the page and choose **Watch part of this page** in the panel (or right-click › *Watch part of this page for changes*), then click the part to watch. Eidetic asks for access to that site only, so it can check it later. Checks run every 15 minutes at most while the browser is open (the `alarms` permission); notifications are off until you turn them on in Monitor.
+
+**Search by meaning (v2):** needs an embedding model in Ollama (`ollama pull nomic-embed-text`) or LM Studio; it is found automatically and can be chosen in Settings › AI models.
+
 ## 4. Connect AI (optional)
 
 Everything except explanations works without AI. Open the panel's settings icon › **AI models**.

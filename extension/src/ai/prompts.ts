@@ -9,7 +9,8 @@ export type AiTaskId =
   | 'explain' | 'explain-simple' | 'fix' | 'corrected-code' | 'explain-code' | 'find-bugs' | 'convert-code'
   | 'solve' | 'hint' | 'similar' | 'explain-vars' | 'related' | 'describe' | 'extract-numbers' | 'summarize'
   | 'analyze' | 'notes' | 'flashcards' | 'quiz' | 'translate' | 'findings' | 'method' | 'limitations'
-  | 'skills' | 'checklist' | 'missing-info' | 'a11y' | 'ask' | 'refine';
+  | 'skills' | 'checklist' | 'missing-info' | 'a11y' | 'ask' | 'refine'
+  | 'combine' | 'contradictions' | 'compare-table' | 'study-set' | 'learning-gaps';
 
 interface TaskDef {
   label: string;
@@ -51,6 +52,22 @@ export const AI_TASKS: Record<AiTaskId, TaskDef> = {
   'missing-info': { label: 'What is missing', cls: 'reason', instruction: 'List the important information that is missing or unclear here and should be checked before deciding.' },
   a11y: { label: 'Accessibility notes', cls: 'vision', visual: true, instruction: 'Review this interface for accessibility: contrast, text size, labels, focus and touch targets. List concrete issues and fixes.' },
   ask: { label: 'Ask', cls: 'reason', visual: true, instruction: 'Answer the question about the content. If the content does not contain the answer, say so and answer from general knowledge, marked as such.' },
+  combine: { label: 'Combine into notes', cls: 'reason', maxTokens: 3000, instruction: 'Combine these captures into one set of study notes: a title, then the key points grouped by theme, without repeating the same point twice. After each point, cite the capture(s) it comes from as [1], [2]….' },
+  contradictions: { label: 'Find contradictions', cls: 'reason', instruction: 'Compare these captures and list every place where they disagree or contradict each other (numbers, dates, claims, definitions). For each: what [n] says, what [m] says, and which seems more reliable if the content shows it. If they agree everywhere, say so plainly.' },
+  'compare-table': { label: 'Build a comparison table', cls: 'reason', instruction: 'Build one Markdown comparison table of these captures: one row per capture ([1], [2]…), one column per aspect they share (choose the aspects from the content). Use only what the content states; write "—" where a capture says nothing. Follow the table with up to three bullets on the main differences.' },
+  'study-set': {
+    label: 'Flashcards and quiz',
+    cls: 'quick',
+    json: true,
+    maxTokens: 2500,
+    instruction:
+      'Make study material from this content. Reply with JSON and nothing else, in this shape: {"flashcards": [{"q": short question, "a": short answer}], "quiz": [{"q": question, "options": four different answer options, "answer": index 0-3 of the correct option, "explain": one sentence why}]}. Write 4 to 8 flashcards and 3 to 5 quiz questions, using only facts in the content.',
+  },
+  'learning-gaps': {
+    label: 'What to study next',
+    cls: 'reason',
+    instruction: 'The content lists quiz questions the student answered wrongly, with the correct answers, and the notebook topics. Suggest what to study next: up to five short points, each naming the concept behind the mistakes and one concrete way to practise it. Do not invent facts beyond the questions.',
+  },
   refine: {
     label: 'Describe this capture',
     cls: 'quick',
@@ -83,6 +100,8 @@ export interface PromptContext {
   description: string;
   source?: string;
   image?: ChatImage;
+  /** Several captures at once (compare and combine): each goes in its own <content index="n"> block. */
+  items?: Array<{ text: string; category: string; description: string; source?: string }>;
 }
 
 const clipText = (t: string, max = 12000) => (t.length > max ? `${t.slice(0, max)}\n[… cut]` : t);
@@ -100,6 +119,17 @@ export function systemPrompt(profile: ProfileId, customStyle?: string): string {
   ].join('\n');
 }
 
+/** Several captures, numbered, each in its own <content index="n"> block; the text budget is shared between them. */
+export function multiContent(items: NonNullable<PromptContext['items']>): string {
+  const each = Math.floor(24000 / Math.max(1, items.length));
+  const blocks = items.map((it, i) => {
+    const head = `Capture [${i + 1}]: ${it.category}.${it.description ? ` Recognised as: ${it.description}.` : ''}${it.source ? ` Source: ${it.source}.` : ''}`;
+    const text = it.text.trim() ? clipText(it.text, each) : '(No text was recognised.)';
+    return `${head}\n<content index="${i + 1}">\n${text}\n</content>`;
+  });
+  return `${items.length} captures follow, numbered [1] to [${items.length}].\n\n${blocks.join('\n\n')}`;
+}
+
 export function buildPrompt(task: AiTaskId, ctx: PromptContext, profile: ProfileId, extra: { question?: string; history?: ChatMessage[]; translateTo?: string; style?: string } = {}): ChatRequest {
   const def = AI_TASKS[task];
   let instruction = def.instruction;
@@ -109,7 +139,9 @@ export function buildPrompt(task: AiTaskId, ctx: PromptContext, profile: Profile
   // `history` holds the turns after the first request (a follow-up conversation); `question` is the newest message.
   const history = extra.history ?? [];
   const inFirst = task === 'ask' && !history.length && extra.question;
-  const first = `${header}\n\n<content>\n${body}\n</content>\n\nTask: ${instruction}${inFirst ? `\n\nQuestion: ${extra.question}` : ''}`;
+  const first = ctx.items?.length
+    ? `${multiContent(ctx.items)}\n\nTask: ${instruction}${inFirst ? `\n\nQuestion: ${extra.question}` : ''}`
+    : `${header}\n\n<content>\n${body}\n</content>\n\nTask: ${instruction}${inFirst ? `\n\nQuestion: ${extra.question}` : ''}`;
   const messages: ChatMessage[] = [{ role: 'user', text: first, ...(def.visual && ctx.image ? { image: ctx.image } : {}) }, ...history];
   if (extra.question && !inFirst) messages.push({ role: 'user', text: extra.question });
   return { system: systemPrompt(profile, extra.style), messages, json: def.json, maxTokens: def.maxTokens };

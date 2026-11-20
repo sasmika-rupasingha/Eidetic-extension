@@ -21,7 +21,7 @@ const renderHome = (access: AccessHelp | null, captureError: string | null = nul
       captureError={captureError}
       onDismissError={() => undefined}
       onCapture={() => undefined}
-      onAllowAll={() => undefined}
+      onAllowAll={() => undefined} onWatch={() => undefined}
       onOpen={() => undefined}
       onLibrary={() => undefined}
       toast={() => undefined}
@@ -68,7 +68,7 @@ describe('capture access help', () => {
         captureError={null}
         onDismissError={() => undefined}
         onCapture={() => undefined}
-        onAllowAll={() => undefined}
+        onAllowAll={() => undefined} onWatch={() => undefined}
         onOpen={() => undefined}
         onLibrary={() => undefined}
         toast={() => undefined}

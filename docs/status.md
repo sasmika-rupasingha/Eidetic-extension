@@ -1,4 +1,4 @@
-# Eidetic status (v1.1.0, 20 November 2026)
+# Eidetic status (v3.0.0, 20 November 2026)
 
 What is finished, what isn't, and what is known to be limited. Nothing listed as done is a placeholder.
 
@@ -18,35 +18,50 @@ What is finished, what isn't, and what is known to be limited. Nothing listed as
 | Library | IndexedDB; catalogue numbers; temporary vs kept; pins; notes; typo-tolerant search with match reasons; filters; bulk keep/delete with preview; workspace tab at full width |
 | Video | Timestamp, duration, title; resume link only where real (YouTube, video files) |
 | Privacy Shield | 7 kinds of sensitive data, located in the image; masked copy; blacked-out image download; "Hide part of the image" for anything the detector missed (drag, or keyboard: Enter adds, arrows move, Shift+arrows resize, Delete removes), black out or pixelate, detected details included; original untouched |
-| Storage | Usage, remove expired / all temporary captures with confirmation, export library text as JSON |
+| Storage | Usage, remove expired / all temporary captures with confirmation, export library text as JSON (v3: full backup with images and import, space by kind / workspace / month, Clean up) |
 | Onboarding and states | 3-step first run; loading, empty, error, offline OCR, AI unavailable, local model not running / refused, no models, permission help, storage full message |
 
-## Not in v1 (planned)
+## Planned
 
 | Release | Items |
 |---|---|
-| v2 Intelligence | Visual Memory connections between captures (fields already in the data model), multi-capture workspace (compare, combine, contradictions, comparison tables), workspaces and projects, Study notebooks with saved flashcards / quizzes and progress, learning-gap suggestions, semantic search with local embeddings |
-| v3 Watch | Capture & Compare, website monitoring (text of a chosen area), duplicate / similar detection, smart cleanup, full backup with images and import |
-| Smaller items | A hands-on Firefox check of the panel (see Known limitations) |
+| Smaller items | A hands-on Firefox check of the panel and of the v2/v3 pages (see Known limitations); per-profile model choice (D13) |
 
 ## Known limitations
+
+- **Website monitoring** checks only while the browser is running (alarms, every 15 minutes at most). Pages behind a login or CAPTCHA can't be checked (pages are downloaded without cookies); pages built by scripts may need "Check by opening the page", which opens the page in a background tab for a moment.
 
 - **First capture on a site from the panel button:** Chrome hides a page's address from an extension that hasn't been given access, so Eidetic can't ask for "this site only" in that case. The panel explains the two ways in (shortcut on the page, or allow all sites). After the toolbar icon, shortcut or menu has been used on a page, the button works there.
 - Detection is rule-based: unusual layouts can be classified as plain text. AI refinement (local) improves descriptions but doesn't change the category.
 - OCR accuracy depends on the capture size; tiny or stylised text reads poorly.
 - Chrome built-in AI needs a capable PC and Google Chrome; other Chromium browsers use Ollama, LM Studio or a key.
 - Ollama needs `OLLAMA_ORIGINS` set to allow browser extensions.
-- Search is word-based (exact, prefix, typo-tolerant); search by meaning comes with v2.
+- Search by meaning needs an embedding model in Ollama or LM Studio; without one, search is word-based (exact, prefix, typo-tolerant). Vectors are kept per model: switching models re-indexes in the background.
 - **Firefox is checked by build, `web-ext lint` (0 errors; 8 warnings, all from bundled libraries or Chrome-only calls behind a Firefox check) and code review, not by an automated run:** Playwright can't load extensions into Firefox. In Firefox a click inside the sidebar doesn't give Eidetic access to the page (only the toolbar button, shortcut and menu do), so the panel's Capture button needs "Allow on all sites" or the shortcut, which the panel explains. Firefox doesn't let extensions open `about:addons`, so the panel and Settings describe the way to Eidetic's settings and shortcuts instead of linking.
 - Reading a capture again in a language that has to be downloaded (e.g. Sinhala) is tested with mocked OCR, not end to end (the e2e run is offline).
 
-## Test results (20 Nov 2026)
+## Test results (20 Nov 2026, v3.0.0)
 
 - Types: clean. Lint (oxlint): clean.
-- Unit: 101/101 passed (15 files), about 7 s. Tests run in Node; only the files that render React (`markdown.test.tsx`, `access-help.test.tsx`, `hide-areas.test.tsx`) use jsdom.
-- End-to-end: 52/52 run checks passed in Edge 157 via `CHROME_PATH` (OCR, reading a capture again, detection, actions, streaming answers, follow-ups, local-only refinement, Auto vs Private routing against a mock cloud provider, custom answer style sent to the model and reset, privacy, hiding a hand-marked area in the downloaded safe image (and only that area), PDF viewer, browser pages, search, AI settings, themes, access help shown as one message). The 3 video checks were skipped (no ffmpeg on this PC). Playwright's Chromium 159 (build 1255) doesn't start on Windows 11 build 26300 ("side-by-side configuration is incorrect").
+- Unit: 168/168 passed (24 files), about 11 s. Tests run in Node; the files that render React or need the DOM (`markdown.test.tsx`, `access-help.test.tsx`, `hide-areas.test.tsx`, `monitor.test.ts`) use jsdom.
+- End-to-end: 86/86 run checks passed in Edge via `CHROME_PATH`; 3 video checks skipped (no ffmpeg on this PC). Besides the v1 checks (OCR, reading again, detection, actions, streaming answers, follow-ups, local-only refinement, Auto vs Private routing, custom answer style, privacy, hiding areas, PDF viewer, browser pages, search, AI settings, themes, access help) the run covers: related captures with reasons and the link back, the topic filter, search by meaning with a mock Ollama `/api/embed` and the indexed count, workspaces (create, assign in bulk, filter, workspace page), compare (side by side, diff, merged table, cloud notice, one `<content index>` block per capture), study notebooks (generate and save, review a card, quiz score, progress, AI learning gaps on request), Capture & Compare (preset area, changed number old → new, added text, image difference), website monitoring (pick a part, check via the offscreen document, change listed, badge set and cleared), duplicates and the storage dashboard, and a full backup: export (no API keys), delete everything, import, library restored.
+- Firefox build: `web-ext lint` 0 errors, 8 warnings (bundled libraries and Chrome-only calls behind a Firefox check, as in v1). Store packages: `dist/eidetic-chromium-3.0.0.zip`, `dist/eidetic-firefox-3.0.0.zip`.
 
-- Firefox build: `web-ext lint` 0 errors. Store packages: `dist/eidetic-chromium-1.1.0.zip`, `dist/eidetic-firefox-1.1.0.zip`.
+## New in v3.0.0 Watch (20 Nov 2026)
+
+- **Capture & Compare (D21):** "Compare with a new capture" on any capture takes a new capture of the same area: on the same page the selection starts on the old box (scaled if the window size changed), so Enter is enough. The new capture shows what changed since the baseline: numbers changed (old → new, with their label), lines changed, added and removed, and the new image with the changed pixels marked in red.
+- **Website monitoring (D22):** "Watch part of this page" (panel, or right-click menu) highlights parts of the page under the mouse; click one (Up arrow takes a larger part, Esc cancels). Eidetic stores the address and a robust selector, asks for access to that site only, and checks it on a schedule (15 min to once a day) by downloading the page without cookies and reading the part with DOMParser (no page scripts run; Chrome uses an offscreen document for this). Changes appear on the Monitor page in the same categories as Capture & Compare, as a count on the toolbar icon, and, only if turned on, as a notification. Pages whose content is built by scripts can be checked with "Check by opening the page".
+- **Duplicates and smart cleanup (D23):** every capture gets a perceptual hash (dHash, computed on this computer; older captures are filled in in the background). Settings › Clean up lists exact duplicates (same image, confirmed by SHA-256), similar images, near-identical text, old temporary captures and the largest captures. Each group suggests keeping the pinned, kept or annotated one (otherwise the newest) and pre-selects the rest; nothing is deleted until you confirm. Settings › Storage now shows the space used by kind, by workspace and by month.
+- **Full backup and import (D24):** Settings › Storage › Back up everything saves one `.eidetic.json` file with every capture and its image (base64), notes, saved answers, links, workspaces, notebooks, watched pages and settings, with a format version and **without API keys**. Import checks everything as untrusted input (images must really be PNG, JPEG or WebP; detection and privacy findings are worked out again from the text), skips what is already in the library (same id, or the same image), keeps catalogue numbers unless taken, and reports what was added, skipped or left out. Restoring settings is optional and never touches the API keys on this computer.
+
+## New in v2.0.0 Intelligence (20 Nov 2026)
+
+- **Visual Memory (D16):** each processed capture is linked to earlier ones by rules on this computer (same video, same page close in time, same site in one sitting, shared topics/keywords, similar text by word shingles, the same error or detail). Links are stored both ways with a reason ("Same page, 10 min later"), shown as **Related** (up to 5) in the result view, and can be removed for good ("Not related"). The workspace library has a **Topic** filter built from AI topics and keywords.
+
+- **Search by meaning (D17):** with a local embedding model (Ollama `/api/embed`, e.g. `nomic-embed-text`, or LM Studio `/v1/embeddings`), every capture gets a meaning vector, computed in small batches in the background while the panel or workspace is open. Searches show word results first, then **Similar in meaning** with the similarity. Settings › AI models › Search by meaning chooses the model and shows how many captures are indexed. Visual Memory uses the vectors as one more rule. Works in Private mode (local only).
+- **Workspaces (D18):** named projects with a colour (the four accents) and a description, in the workspace tab (Workspaces). Captures are added one at a time (on the capture's page) or in bulk (library selection › Move to workspace); the library filters by workspace; a workspace's page lists its captures and notes. Deleting a workspace keeps its captures.
+- **Compare and combine (D19):** select 2–8 captures in the library and press Compare: images and text side by side, a word-level text diff between any two (with how much is the same), their tables merged into one comparison table (Copy Markdown, Download CSV), and three AI actions over all of them: Combine into notes, Find contradictions, Build a comparison table. The page says where the text goes before anything is sent.
+- **Study notebooks (D20):** on a capture's page (Study: flashcards and quiz) or when comparing captures, AI writes flashcards and a quiz as JSON; Eidetic validates them and saves them in a notebook (standalone or for a workspace). The Study page reviews due cards (Again / Good / Easy, spaced repetition with due dates), runs the quiz and keeps scores, and shows progress per notebook. **Learning gaps:** on request only, AI suggests what to study next from the questions answered wrongly, clearly labelled as AI.
 
 ## New in v1.1.0 (20 Nov 2026)
 
@@ -64,7 +79,7 @@ What is finished, what isn't, and what is known to be limited. Nothing listed as
 
 ## Security and performance notes
 
-- Permissions: `activeTab`, `scripting`, `storage`, `unlimitedStorage`, `contextMenus`, `sidePanel`; hosts are optional and requested per provider or by the user. No content scripts on every page; no remote code; CSP `script-src 'self' 'wasm-unsafe-eval'`.
+- Permissions: `activeTab`, `scripting`, `storage`, `unlimitedStorage`, `contextMenus`, `sidePanel`, `alarms` (v3: scheduled checks of watched pages; no warning shown) and, in Chrome, `offscreen` (v3: reading watched pages with DOMParser, since the service worker has no DOM). `notifications` is optional and requested only when the user turns monitor notifications on. Hosts are optional and requested per provider, per watched site, or by the user. No content scripts on every page; no remote code; CSP `script-src 'self' 'wasm-unsafe-eval'`.
 - Captured text is untrusted: it goes to models inside `<content>` tags with an instruction to treat it as data; answers render as React elements, never HTML; CSV export neutralises spreadsheet formulas.
 - API keys are stored unencrypted in the browser's extension storage (like every extension; anyone with access to the Windows account could read them). Use keys with spending limits.
 - Images are stored as PNG for best OCR; a large library of full-screen captures can use hundreds of MB. Storage shows usage and offers cleanup.

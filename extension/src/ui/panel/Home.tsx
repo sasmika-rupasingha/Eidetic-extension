@@ -26,6 +26,7 @@ export function Home({
   onDismissError,
   onCapture,
   onAllowAll,
+  onWatch,
   onOpen,
   onLibrary,
   toast,
@@ -37,6 +38,7 @@ export function Home({
   onDismissError: () => void;
   onCapture: (mode: 'area' | 'full') => void;
   onAllowAll: () => void;
+  onWatch: () => void;
   onOpen: (id: string) => void;
   onLibrary: () => void;
   toast: (m: string) => void;
@@ -211,6 +213,9 @@ export function Home({
           </button>
           <button type="button" className="btn" onClick={() => file.current?.click()}>
             Open file
+          </button>
+          <button type="button" className="btn" data-testid="watch" onClick={onWatch} disabled={restricted || selecting} title="Choose part of this page; Eidetic checks it for changes">
+            Watch part of this page
           </button>
           <input
             ref={file}

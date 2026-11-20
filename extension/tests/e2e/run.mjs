@@ -313,6 +313,68 @@ try {
   await styleWs.close();
   await setSettings({ mode: 'auto' });
 
+  section('Capture & Compare');
+  await site.goto(`${SITE}/change`);
+  await site.bringToFront();
+  await panel.getByRole('button', { name: 'Capture', exact: true }).first().click();
+  await capture();
+  const firstFees = await until(async () => {
+    if (!(await panel.locator('select[id^=reread-]:not([disabled])').count())) return null;
+    const t = await panel.locator('[data-testid=result-title]').textContent({ timeout: 500 });
+    return t ? await panel.locator('.result-caption').textContent() : null;
+  }, 90_000);
+  await site.reload();
+  await site.bringToFront();
+  await panel.click('[data-testid=recapture]');
+  await site.waitForSelector('#eidetic-capture-host', { state: 'attached', timeout: 15_000 });
+  await site.waitForTimeout(300);
+  await site.keyboard.press('Enter');
+  const changeList = await until(async () => {
+    const t = await panel.locator('[data-testid=change-list]').textContent({ timeout: 500 });
+    return /1,350/.test(t ?? '') ? t : null;
+  }, 90_000);
+  check('Capture & Compare lists the changed number, old → new', /1,200\s*→\s*\$?1,350/.test(changeList ?? ''), changeList ?? (await panel.locator('[data-testid=changes]').textContent().catch(() => 'no changes section')) ?? '');
+  check('and the added text', /Added[\s\S]*fee/i.test(changeList ?? ''), changeList ?? '');
+  const secondCaption = await panel.locator('.result-caption').textContent();
+  const sizeOf = (t) => /(\d+) × (\d+)/.exec(t ?? '')?.slice(1).map(Number) ?? [0, 0];
+  const [w1, h1] = sizeOf(firstFees);
+  const [w2, h2] = sizeOf(secondCaption);
+  check('the new capture starts from the same area on the same page', w1 > 0 && Math.abs(w1 - w2) <= 2 && Math.abs(h1 - h2) <= 2 && w2 < 1100, `${firstFees} vs ${secondCaption}`);
+  const imgChange = await until(async () => {
+    const t = await panel.locator('[data-testid=image-change]').textContent({ timeout: 500 });
+    return /% of the image changed/.test(t ?? '') ? t : null;
+  }, 15_000);
+  check('marks the image difference', Boolean(imgChange), (await panel.locator('[data-testid=image-change]').textContent().catch(() => '')) ?? '');
+
+  section('Website monitoring');
+  await site.goto(`${SITE}/monitor`);
+  await site.bringToFront();
+  await panel.getByRole('button', { name: 'Capture', exact: true }).first().click();
+  await panel.click('[data-testid=watch]');
+  await site.waitForSelector('#eidetic-pick-host', { state: 'attached', timeout: 15_000 });
+  const fb = await site.locator('#fees').boundingBox();
+  await site.mouse.move(fb.x + 6, fb.y + 6, { steps: 3 });
+  await site.mouse.click(fb.x + 6, fb.y + 6);
+  const mp = await ctx.newPage();
+  await mp.goto(`${base}/workspace.html#/monitor`);
+  const watched = await until(async () => {
+    const t = await mp.locator('[data-testid=monitor-text]').textContent({ timeout: 500 });
+    return /Tuition: \$1,200/.test(t ?? '') ? t : null;
+  }, 15_000);
+  check('watches the part of the page the user points at', Boolean(watched), (await mp.locator('main').textContent()) ?? '');
+  await mp.getByRole('button', { name: 'Check now' }).click();
+  const monChange = await until(async () => {
+    const t = await mp.locator('[data-testid=monitor-change-line]').textContent({ timeout: 500 });
+    return /number changed/.test(t ?? '') ? t : null;
+  }, 20_000);
+  const monList = (await mp.locator('[data-testid=monitor] [data-testid=change-list]').textContent().catch(() => '')) ?? '';
+  check('a check downloads the page, reads the part (no scripts run) and lists the change', Boolean(monChange) && /1,200\s*→\s*\$1,350/.test(monList), `${monChange} | ${monList}`);
+  const badge = await control.evaluate(() => chrome.action.getBadgeText({}));
+  check('shows the change as a badge', badge === '1', badge);
+  const badgeCleared = await until(async () => ((await control.evaluate(() => chrome.action.getBadgeText({}))) === '' ? true : null), 10_000);
+  check('the badge clears once the Monitor page has been seen', Boolean(badgeCleared));
+  await mp.close();
+
   section('A page Chrome never lets extensions capture');
   const browserPage = await ctx.newPage();
   await browserPage.goto('chrome://version').catch(() => undefined);
@@ -325,19 +387,123 @@ try {
   await browserPage.close();
   await site.bringToFront();
 
+  section('Visual Memory');
+  await panel.getByRole('button', { name: 'Library', exact: true }).click();
+  await panel.getByRole('button', { name: 'Tables' }).click();
+  await panel.locator('.entry .linkish').first().click();
+  const relLine = await until(async () => {
+    const t = await panel.locator('[data-testid=related]').textContent({ timeout: 500 });
+    return /Same page/.test(t ?? '') ? t : null;
+  }, 15_000);
+  check('two captures of the same page show each other as related, with the reason', Boolean(relLine), relLine ?? 'no related section');
+  const firstTitle = await panel.locator('.result-foot').textContent();
+  await panel.locator('[data-testid=related] .related-item', { hasText: 'Same page' }).first().locator('.related-title').click();
+  const back = await until(async () => {
+    const t = await panel.locator('.result-foot').textContent({ timeout: 500 });
+    const r = await panel.locator('[data-testid=related]').textContent({ timeout: 500 });
+    return t !== firstTitle && /Same page/.test(r ?? '') ? true : null;
+  }, 10_000);
+  check('opening a related capture shows the link back', Boolean(back));
+  const topicWs = await ctx.newPage();
+  await topicWs.goto(`${base}/workspace.html#/library`);
+  await topicWs.waitForSelector('#lib-topic', { timeout: 10_000 });
+  await topicWs.selectOption('#lib-topic', 'events');
+  const topicCount = await until(async () => {
+    const t = await topicWs.locator('.lib-count').textContent();
+    return /^1 capture(?!s)/.test(t ?? '') ? t : null;
+  }, 5000);
+  check('the library filters by topic', Boolean(topicCount), (await topicWs.locator('.lib-count').textContent()) ?? '');
+  await topicWs.close();
+
   section('Library search');
   await panel.getByRole('button', { name: 'Library', exact: true }).click();
+  await panel.getByRole('button', { name: 'All', exact: true }).click();
   await panel.fill('#lib-q', 'pandsa');
   const hit = await until(async () => {
     const t = await panel.locator('.entry').first().textContent({ timeout: 500 });
     return /pandas/i.test(t ?? '') && /In the/.test(t ?? '') && (await panel.locator('.entry').count()) === 1 ? t : null;
   }, 5000);
   check('finds a capture despite a typo, and says why', Boolean(hit), (await panel.locator('.entry').allTextContents()).join(' | '));
+  await panel.fill('#lib-q', 'conference');
+  const meaning = await until(async () => {
+    const t = await panel.locator('[data-testid=meaning]').textContent({ timeout: 500 });
+    return /Symposium/i.test(t ?? '') ? t : null;
+  }, 30_000);
+  check('finds a capture by meaning (local embedding model) when no word matches', Boolean(meaning) && server.requests.some((r) => r.via === 'ollama-embed' && r.model === 'nomic-embed-text:latest'), (await panel.locator('.library').textContent()) ?? '');
   await panel.fill('#lib-q', '');
   await panel.getByRole('button', { name: 'Tables' }).click();
   const tables = await panel.locator('.entry').count();
   check('filters by kind', tables === 2, String(tables));
   if (shots) await panel.screenshot({ path: join(shots, 'panel-library-light.png') });
+
+  section('Workspaces');
+  const wsp = await ctx.newPage();
+  await wsp.goto(`${base}/workspace.html#/workspaces`);
+  await wsp.fill('#ws-name', 'Machine learning');
+  await wsp.getByRole('button', { name: 'Create workspace' }).click();
+  check('creates a workspace', Boolean(await until(async () => ((await wsp.locator('.ws-card', { hasText: 'Machine learning' }).count()) ? true : null), 5000)));
+  await wsp.goto(`${base}/workspace.html#/library`);
+  await wsp.getByRole('button', { name: 'Tables' }).click();
+  await wsp.getByRole('button', { name: 'Select all shown' }).click();
+  await wsp.selectOption('[aria-label="Move the selected captures to a workspace"]', { label: 'Machine learning' });
+
+  section('Compare and combine');
+  await wsp.getByRole('button', { name: 'Compare', exact: true }).click();
+  const cols = await until(async () => ((await wsp.locator('[data-testid=compare-col]').count()) === 2 ? true : null), 5000);
+  check('opens 2 selected captures side by side', Boolean(cols));
+  check('compares their text locally', /100% of the text is the same/.test((await wsp.locator('[data-testid=diff-summary]').textContent()) ?? ''), (await wsp.locator('[data-testid=diff-summary]').textContent()) ?? '');
+  const mergedRows = await wsp.locator('[data-testid=merged-table] tbody tr').count();
+  check('merges their tables into one comparison table', mergedRows === 6 && (await wsp.locator('[data-testid=merged-table] th').first().textContent()) === 'Source', String(mergedRows));
+  check('says where the text of all captures goes before sending', /Sends the text of 2 captures to Google Gemini/.test((await wsp.locator('[data-testid=cmp-route]').textContent()) ?? ''), (await wsp.locator('[data-testid=cmp-route]').textContent()) ?? '');
+  const beforeCmp = server.requests.length;
+  await wsp.getByRole('button', { name: 'Build a comparison table' }).click();
+  const cmpAnswer = await until(async () => ((await wsp.locator('[data-testid=multi-answer][aria-busy=false]').textContent({ timeout: 500 }))?.includes('it works') ? true : null), 20_000);
+  const cmpReq = JSON.stringify(server.requests.slice(beforeCmp).at(-1)?.body ?? '');
+  check('an AI action sees each capture in its own <content index> block', Boolean(cmpAnswer) && cmpReq.includes('<content index=\\"1\\">') && cmpReq.includes('<content index=\\"2\\">'), cmpReq.slice(0, 300));
+  await wsp.goto(`${base}/workspace.html#/library`);
+  await wsp.selectOption('#lib-ws', { label: 'Machine learning' });
+  const wsCount = await until(async () => {
+    const t = await wsp.locator('.lib-count').textContent();
+    return (t ?? '').startsWith('2 captures') ? t : null;
+  }, 5000);
+  check('assigns captures in bulk and filters the library by workspace', Boolean(wsCount), (await wsp.locator('.lib-count').textContent()) ?? '');
+  await wsp.goto(`${base}/workspace.html#/workspaces`);
+  await wsp.locator('.ws-card', { hasText: 'Machine learning' }).click();
+  const wsPage = await until(async () => ((await wsp.getByRole('heading', { name: 'Captures (2)' }).count()) ? true : null), 5000);
+  check('the workspace page lists its captures', Boolean(wsPage));
+  await wsp.close();
+
+  section('Study notebooks');
+  const st = await ctx.newPage();
+  await st.goto(`${base}/workspace.html#/library`);
+  await st.getByRole('button', { name: 'Tables' }).click();
+  await st.locator('.entry .linkish').first().click();
+  await st.getByText('Study: flashcards and quiz').click();
+  await st.locator('[data-testid=study-maker] input').fill('ML notebook');
+  await st.getByRole('button', { name: 'Make flashcards and quiz' }).click();
+  const savedSet = await until(async () => st.locator('[data-testid=study-saved]').textContent({ timeout: 500 }), 20_000);
+  check('generates flashcards and a quiz and saves them in a notebook', /Saved 2 flashcards and 2 quiz questions to “ML notebook”/.test(savedSet ?? ''), savedSet ?? (await st.locator('[data-testid=study-maker]').textContent()) ?? '');
+  await st.goto(`${base}/workspace.html#/study`);
+  await st.locator('[data-testid=notebook-card]', { hasText: 'ML notebook' }).click();
+  await st.getByRole('button', { name: 'Show answer' }).click();
+  const ans = await st.locator('[data-testid=fc-answer]').textContent();
+  await st.getByRole('button', { name: 'Good', exact: true }).click();
+  const reviewed = await until(async () => ((await st.getByRole('tab', { name: 'Review (1)' }).count()) ? true : null), 5000);
+  check('reviews a flashcard and schedules it for later', Boolean(ans) && Boolean(reviewed), ans ?? '');
+  await st.getByRole('tab', { name: 'Quiz' }).click();
+  await st.getByRole('radio', { name: 'CNN' }).check();
+  await st.getByRole('radio', { name: '0.91' }).check();
+  await st.getByRole('button', { name: 'Check answers' }).click();
+  check('takes a quiz and scores it', /1 of 2 right/.test((await st.locator('[data-testid=quiz-score]').textContent()) ?? ''));
+  await st.getByRole('tab', { name: 'Progress' }).click();
+  check('shows progress per notebook', /Best scores*50%/.test((await st.locator('[data-testid=progress]').textContent()) ?? ''), (await st.locator('[data-testid=progress]').textContent()) ?? '');
+  await st.getByRole('button', { name: 'Suggest what to study next (AI)' }).click();
+  const gapsText = await until(async () => {
+    const t = await st.locator('[data-testid=multi-answer][aria-busy=false]').textContent({ timeout: 500 });
+    return /Practise reading recall/.test(t ?? '') ? t : null;
+  }, 20_000);
+  check('suggests learning gaps on request, labelled as AI', Boolean(gapsText) && (await st.getByText('Suggested by AI').count()) === 1);
+  await st.close();
 
   section('Workspace and themes');
   const ws = await ctx.newPage();
@@ -348,6 +514,11 @@ try {
   check('reads the context size from Ollama', (await ws.locator('tr', { hasText: 'qwen2.5:7b' }).getByText('32K').count()) === 1);
   check('explains who handles each task', (await ws.getByText('The only ready model that can see images').count()) + (await ws.getByText(/can see images and runs on this computer/).count()) > 0);
   await ws.locator('tr', { hasText: 'llava:7b' }).getByRole('button', { name: 'Test' }).click();
+  const indexed = await until(async () => {
+    const t = await ws.locator('[data-testid=semantic-count]').textContent({ timeout: 500 });
+    return /^(?<n>\d+) of \k<n> captures indexed with nomic-embed-text/.test(t ?? '') ? t : null;
+  }, 15_000);
+  check('search by meaning uses the local embedding model and indexes every capture', Boolean(indexed), (await ws.locator('[data-testid=semantic-settings]').textContent().catch(() => '')) ?? '');
   check('Test button checks a model', Boolean(await until(async () => ((await ws.getByText(/Works · /).count()) ? true : null), 10_000)));
   if (shots) await ws.screenshot({ path: join(shots, 'workspace-ai-light.png'), fullPage: true });
   await ws.goto(`${base}/workspace.html#/settings/appearance`);
@@ -374,6 +545,57 @@ try {
     await ws.screenshot({ path: join(shots, 'workspace-library-dark.png') });
   }
   await ws.getByRole('radio', { name: /Light/ }).click().catch(() => undefined);
+
+  section('Duplicates and smart cleanup');
+  const cl = await ctx.newPage();
+  await cl.goto(`${base}/workspace.html#/settings/cleanup`);
+  const dupGroup = await until(async () => {
+    const exact = cl.locator('[data-testid=cleanup-exact] .clean-group');
+    const similar = cl.locator('[data-testid=cleanup-similar] .clean-group');
+    const g = (await exact.count()) ? exact.first() : (await similar.count()) ? similar.first() : null;
+    return g && (await g.locator('.clean-item').count()) >= 2 ? g : null;
+  }, 20_000);
+  check('two identical captures are offered as duplicates', Boolean(dupGroup), (await cl.locator('main').textContent()) ?? '');
+  if (dupGroup) {
+    const items = dupGroup.locator('.clean-item');
+    const keepChecked = await items.first().locator('input[type=checkbox]').isChecked();
+    const restChecked = await items.nth(1).locator('input[type=checkbox]').isChecked();
+    check('keeps one of each group and suggests deleting the copy', !keepChecked && (await items.first().getByText('Suggested to keep').count()) === 1 && (restChecked || /Kept|Pinned/.test((await items.nth(1).textContent()) ?? '')));
+  }
+  check('nothing is deleted before you confirm', (await control.evaluate(() => new Promise((r) => { const q = indexedDB.open('eidetic'); q.onsuccess = () => { const g = q.result.transaction('captures').objectStore('captures').count(); g.onsuccess = () => r(g.result); }; }))) >= 8);
+  await cl.goto(`${base}/workspace.html#/settings/storage`);
+  const byKind = await until(async () => cl.locator('[data-testid=by-kind]').textContent({ timeout: 500 }), 10_000);
+  check('the storage dashboard shows space by kind, workspace and month', /Table/.test(byKind ?? '') && (await cl.locator('[data-testid=by-workspace]').count()) === 1 && (await cl.locator('[data-testid=by-month]').count()) === 1, byKind ?? '');
+  await cl.close();
+
+  section('Full backup and import');
+  const countCaptures = () => control.evaluate(() => new Promise((r) => { const q = indexedDB.open('eidetic'); q.onsuccess = () => { const g = q.result.transaction('captures').objectStore('captures').count(); g.onsuccess = () => r(g.result); }; }));
+  const bk = await ctx.newPage();
+  await bk.goto(`${base}/workspace.html#/settings/storage`);
+  const [bdl] = await Promise.all([bk.waitForEvent('download', { timeout: 60_000 }), bk.click('[data-testid=backup-export]')]);
+  const backupPath = await bdl.path();
+  const backupText = readFileSync(backupPath, 'utf8');
+  const backup = JSON.parse(backupText);
+  const beforeCount = await countCaptures();
+  check('backs up every capture with its image, plus workspaces, notebooks and watched pages', backup.format === 'eidetic-backup' && backup.captures.length === beforeCount && backup.captures.every((c) => c.imageData?.length > 100) && backup.workspaces.length >= 1 && backup.notebooks.length >= 1 && backup.monitors.length >= 1, `${backup.captures?.length} of ${beforeCount}`);
+  check('the backup never contains API keys', !backupText.includes('test-key') && bdl.suggestedFilename().endsWith('.eidetic.json'), bdl.suggestedFilename());
+  await bk.goto(`${base}/workspace.html#/library`);
+  await bk.getByRole('button', { name: 'Select all shown' }).click();
+  await bk.getByRole('button', { name: 'Delete…' }).click();
+  await bk.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click();
+  const emptied = await until(async () => ((await countCaptures()) === 0 ? true : null), 10_000);
+  await bk.goto(`${base}/workspace.html#/settings/storage`);
+  await bk.setInputFiles('#backup-file', backupPath);
+  const importLine = await until(async () => bk.locator('[data-testid=import-report]').textContent({ timeout: 500 }), 60_000);
+  const afterCount = await countCaptures();
+  check('importing the backup into the emptied library restores every capture', Boolean(emptied) && afterCount === beforeCount && new RegExp(`Added ${beforeCount} captures`).test(importLine ?? ''), `${importLine} (${afterCount} of ${beforeCount})`);
+  await bk.goto(`${base}/workspace.html#/library`);
+  const restoredCount = await until(async () => {
+    const t = await bk.locator('.lib-count').textContent();
+    return (t ?? '').startsWith(`${beforeCount} captures`) ? t : null;
+  }, 10_000);
+  check('the restored library is searchable again', Boolean(restoredCount));
+  await bk.close();
 
   section('Extension pages');
   check('no JavaScript errors on extension pages', jsErrors.length === 0, jsErrors.join(' | '));

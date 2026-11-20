@@ -18,6 +18,7 @@ export default defineConfig(({ mode }) => ({
       input: {
         panel: resolve(import.meta.dirname, 'panel.html'),
         workspace: resolve(import.meta.dirname, 'workspace.html'),
+        offscreen: resolve(import.meta.dirname, 'offscreen.html'),
         background: resolve(import.meta.dirname, 'src/background/index.ts'),
       },
       output: {

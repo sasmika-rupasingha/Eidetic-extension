@@ -8,7 +8,7 @@ See something → Capture it → Understand it → Connect it → Use it.
 |---|---|---|
 | ![Result](docs/screenshots/panel-result-light.png) | ![Library](docs/screenshots/panel-library-dark.png) | ![AI models](docs/screenshots/workspace-ai-dark.png) |
 
-## What it does (v1)
+## What it does
 
 - **Smart Capture.** Alt+Shift+E, the right-click menu or the panel. The page freezes; drag a box, adjust it with handles or arrow keys, Enter to capture, F for the full screen, Esc to cancel. Paste or drop images too. Works in Chrome's PDF viewer.
 - **Offline text recognition** (Tesseract, WebAssembly). English built in; Sinhala, Tamil, Hindi, Arabic, Chinese, Japanese and more download once.
@@ -21,7 +21,16 @@ See something → Capture it → Understand it → Connect it → Use it.
 - **Privacy Shield.** Finds emails, phone numbers, ID numbers, card numbers, API keys, tokens and passwords; copies a masked version or downloads a blacked-out image, and lets you mark anything else to hide (black out or pixelate). The original is never changed.
 - **Light, dark and system themes**, four accent colours, keyboard support and reduced motion.
 
-What comes next (Visual Memory connections, multi-capture comparison, Study notebooks, monitoring) and what's not done yet: [docs/status.md](docs/status.md).
+## New in v2 (Intelligence) and v3 (Watch)
+
+- **Visual Memory.** Related captures (same page, same video, shared topics, similar text) with the reason, and a topic filter in the library.
+- **Search by meaning** with an embedding model on your own computer (Ollama or LM Studio), after the word results.
+- **Workspaces** for projects, **Compare** 2–8 captures (text diff, merged tables, AI combine / contradictions / comparison table) and **Study notebooks** (flashcards with spaced repetition, quizzes, progress, learning gaps on request).
+- **Capture & Compare:** a new capture of the same area, with numbers changed (old → new), text added/removed and an image difference.
+- **Website monitoring:** watch the text of a part of a page; checked on a schedule, changes listed and shown on the toolbar icon.
+- **Duplicates and cleanup**, a storage dashboard, and a **full backup** (one `.eidetic.json` with images, never API keys) with a safe import.
+
+What's not done yet and known limits: [docs/status.md](docs/status.md).
 
 ## Privacy
 
@@ -42,7 +51,7 @@ Load `extension\dist\chromium` at `chrome://extensions` (Developer mode › Load
 | | |
 |---|---|
 | `npm test` | 87 unit tests: content detection, routing (Auto/Manual/Private), privacy detectors, search, actions, calendar and vCard export, video links, the capture store, settings, prompts, provider wire formats and model discovery |
-| `npm run e2e` | Loads the built extension into real Chromium: 55 checks with a test site, a mock Ollama and a mock cloud provider, covering capture → OCR → detection → actions → streamed answers, follow-ups, local-only refinement, Private mode, privacy findings, video moments, the PDF viewer, library search, AI settings, themes and the first-capture access help |
+| `npm run e2e` | Loads the built extension into real Chromium: 89 checks with a test site, a mock Ollama and a mock cloud provider, covering capture → OCR → detection → actions → streamed answers, follow-ups, local-only refinement, Private mode, privacy findings, video moments, the PDF viewer, library search, search by meaning with a local embedding model, Visual Memory links and topics, workspaces, comparing and combining captures, study notebooks, Capture & Compare, website monitoring, duplicate cleanup, full backup and import, AI settings, themes and the first-capture access help |
 
 ## Project
 

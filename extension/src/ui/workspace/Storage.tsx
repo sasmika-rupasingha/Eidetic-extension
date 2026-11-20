@@ -1,16 +1,85 @@
 /** Settings › Storage: how much space the library uses, remove temporary captures now, export a backup of the text. */
 import { useEffect, useState } from 'react';
-import { deleteCaptures, expiredIds, listCaptures, usage, type Usage } from '../../store/captures';
+import { CATEGORY_LABEL, type Category } from '../../detect/classify';
+import { deleteCaptures, expiredIds, listCaptures, usage, type Capture, type Usage } from '../../store/captures';
+import { breakdown, type Breakdown } from '../../store/cleanup';
+import { exportBackup, importBackup, parseBackup, reportLine } from '../../store/backup';
+import type { Workspace } from '../../store/workspaces';
 import type { Settings } from '../../store/settings';
 import { Dialog } from '../shared/components';
 import { download } from '../shared/useActions';
 
-const mb = (b: number) => (b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : `${(b / 1e6).toFixed(1)} MB`);
+import { mb } from './CleanupPage';
 
-export function Storage({ settings: s, toast }: { settings: Settings; toast: (m: string) => void }) {
+function BreakdownTable({ title, rows, testid }: { title: string; rows: Breakdown[]; testid: string }) {
+  const max = Math.max(1, ...rows.map((r) => r.bytes));
+  return (
+    <div className="table-scroll">
+      <table className="data bars" data-testid={testid}>
+        <caption className="sr-only">{title}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{title}</th>
+            <th scope="col">Captures</th>
+            <th scope="col">Images</th>
+            <th scope="col" aria-hidden="true" />
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.key}>
+              <td>{r.label}</td>
+              <td>{r.count}</td>
+              <td>{mb(r.bytes)}</td>
+              <td className="bar" aria-hidden="true">
+                <div className="meter">
+                  <span style={{ width: `${Math.max(2, (r.bytes / max) * 100)}%` }} />
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+export function Storage({ settings: s, toast, captures, workspaces }: { settings: Settings; toast: (m: string) => void; captures: Capture[] | null; workspaces: Workspace[] }) {
   const [u, setU] = useState<Usage | null>(null);
   const [pending, setPending] = useState<{ ids: string[]; label: string } | null>(null);
   const load = () => void usage().then(setU);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [restoreSettings, setRestoreSettings] = useState(false);
+  const [imported, setImported] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const backup = async () => {
+    setBusy('Preparing the backup…');
+    try {
+      const { blob, counts } = await exportBackup(chrome.runtime.getManifest().version);
+      download(blob, `eidetic-backup-${new Date().toISOString().slice(0, 10)}.eidetic.json`);
+      toast(`Backup saved: ${counts.captures} captures with images (no API keys)`);
+    } catch (e) {
+      toast((e as Error).message || 'Couldn’t make the backup');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const restore = async (file: File) => {
+    setBusy('Checking the backup…');
+    setImported(null);
+    try {
+      const parsed = parseBackup(await file.text());
+      setBusy(`Adding ${parsed.captures.length} captures…`);
+      const r = await importBackup(parsed, { restoreSettings });
+      setImported({ ok: true, text: reportLine(r) });
+      load();
+    } catch (e) {
+      setImported({ ok: false, text: (e as Error).message || 'Couldn’t import this file.' });
+    } finally {
+      setBusy(null);
+    }
+  };
   useEffect(load, []);
 
   const prepare = async (kind: 'temporary' | 'expired') => {
@@ -58,8 +127,19 @@ export function Storage({ settings: s, toast }: { settings: Settings; toast: (m:
           ) : null}
         </section>
       ) : null}
+      {captures?.length ? (
+        <section className="ws-section" aria-labelledby="dash-h">
+          <h2 id="dash-h">What uses the space</h2>
+          <BreakdownTable title="Kind" testid="by-kind" rows={breakdown(captures, 'kind', (k) => (k === 'video' ? 'Video' : k === 'other' ? 'Other' : (CATEGORY_LABEL[k as Category] ?? k)))} />
+          {workspaces.length ? <BreakdownTable title="Workspace" testid="by-workspace" rows={breakdown(captures, 'workspace', (k) => workspaces.find((w) => w.id === k)?.name ?? 'No workspace')} /> : null}
+          <BreakdownTable title="Month" testid="by-month" rows={breakdown(captures, 'month', (k) => new Date(`${k}-01T12:00:00`).toLocaleDateString([], { month: 'long', year: 'numeric' }))} />
+        </section>
+      ) : null}
       <section className="ws-section">
         <h2>Clean up</h2>
+        <p className="small" style={{ margin: 0 }}>
+          <a href="#/settings/cleanup">Find duplicates, look-alikes and the largest captures ›</a>
+        </p>
         <p className="small muted" style={{ margin: 0 }}>
           Only temporary captures are offered: never kept, pinned, annotated or used with AI. You see the count before anything is removed.
         </p>
@@ -73,15 +153,41 @@ export function Storage({ settings: s, toast }: { settings: Settings; toast: (m:
         </div>
       </section>
       <section className="ws-section">
-        <h2>Backup</h2>
+        <h2>Backup and import</h2>
         <p className="small muted" style={{ margin: 0 }}>
-          Exports the text, notes, descriptions and saved answers of every capture as a JSON file. Images aren’t included in this version.
+          A full backup is one <code>.eidetic.json</code> file with every capture and its image, notes, saved answers and links, your workspaces, study notebooks, watched pages and settings. <strong>API keys are never included.</strong> Keep the file somewhere safe: it contains everything you captured.
         </p>
-        <div>
+        <div className="row-gap wrap">
+          <button type="button" className="btn small primary" data-testid="backup-export" disabled={Boolean(busy)} onClick={() => void backup()}>
+            Back up everything
+          </button>
           <button type="button" className="btn small" onClick={() => void exportText()}>
-            Export library text
+            Export library text only
           </button>
         </div>
+        <div className="field">
+          <label htmlFor="backup-file">Import a backup</label>
+          <input id="backup-file" type="file" accept=".json,application/json" className="input" disabled={Boolean(busy)} onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) void restore(f);
+            e.target.value = '';
+          }} />
+          <span className="help">Everything in the file is checked first. Captures already in your library are skipped; nothing is replaced.</span>
+        </div>
+        <label className="check">
+          <input type="checkbox" checked={restoreSettings} onChange={(e) => setRestoreSettings(e.target.checked)} />
+          <span>Also restore settings from the backup (your API keys stay as they are)</span>
+        </label>
+        {busy ? (
+          <div className="row-gap small muted" role="status">
+            <span className="spinner" /> {busy}
+          </div>
+        ) : null}
+        {imported ? (
+          <div className={`note ${imported.ok ? 'ok' : 'err'}`} role={imported.ok ? 'status' : 'alert'} data-testid="import-report">
+            {imported.text}
+          </div>
+        ) : null}
       </section>
       {pending ? (
         <Dialog
