@@ -22,6 +22,9 @@ export type Mode = 'auto' | 'manual' | 'private';
 export type Accent = 'ultramarine' | 'vermilion' | 'moss' | 'graphite';
 export type ThemePref = 'system' | 'light' | 'dark';
 export type ProfileId = 'study' | 'developer' | 'research' | 'writing' | 'general';
+export const PROFILE_IDS = ['general', 'study', 'developer', 'research', 'writing'] as const satisfies readonly ProfileId[];
+/** Longest custom answer style kept (it goes into every AI request's system prompt). */
+export const PROFILE_STYLE_MAX = 600;
 
 export interface ModelInfo {
   id: string;
@@ -56,6 +59,8 @@ export interface Settings {
   accent: Accent;
   mode: Mode;
   profile: ProfileId;
+  /** The user's own wording for a profile's answer style; a missing entry uses the built-in style. */
+  profileStyles: Partial<Record<ProfileId, string>>;
   providers: Record<ProviderId, ProviderConfig>;
   /** Manual mode: the model for each kind of task. */
   manual: Partial<Record<TaskClass, ModelRef>>;
@@ -122,6 +127,7 @@ export function defaultSettings(): Settings {
     accent: 'ultramarine',
     mode: 'auto',
     profile: 'general',
+    profileStyles: {},
     providers: Object.fromEntries(PROVIDER_IDS.map((id) => [id, emptyProvider(id)])) as Record<ProviderId, ProviderConfig>,
     manual: {},
     sendImages: true,
@@ -178,13 +184,20 @@ export function validateSettings(raw: unknown): Settings {
     const m = rm[t];
     if (m && typeof m.model === 'string') manual[t] = { provider: oneOf(m.provider, PROVIDER_IDS, 'builtin'), model: m.model.slice(0, 200) };
   }
+  const profileStyles: Settings['profileStyles'] = {};
+  const rs = (r.profileStyles && typeof r.profileStyles === 'object' ? r.profileStyles : {}) as Record<string, unknown>;
+  for (const p of PROFILE_IDS) {
+    const v = str(rs[p], '', PROFILE_STYLE_MAX).trim();
+    if (v) profileStyles[p] = v;
+  }
   const langs = Array.isArray(r.ocrLanguages) ? r.ocrLanguages.filter((l): l is string => typeof l === 'string' && l in OCR_LANGUAGES).slice(0, 4) : [];
   return {
     version: 1,
     theme: oneOf(r.theme, ['system', 'light', 'dark'] as const, d.theme),
     accent: oneOf(r.accent, ['ultramarine', 'vermilion', 'moss', 'graphite'] as const, d.accent),
     mode: oneOf(r.mode, ['auto', 'manual', 'private'] as const, d.mode),
-    profile: oneOf(r.profile, ['study', 'developer', 'research', 'writing', 'general'] as const, d.profile),
+    profile: oneOf(r.profile, PROFILE_IDS, d.profile),
+    profileStyles,
     providers,
     manual,
     sendImages: typeof r.sendImages === 'boolean' ? r.sendImages : d.sendImages,

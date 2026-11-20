@@ -3,10 +3,10 @@ import { useState } from 'react';
 import { downloadBuiltin } from '../../ai/builtin';
 import { offlineHint, type ProviderStatus } from '../../ai/hub';
 import { requestProviderPermission } from '../../ai/permissions';
-import { PROFILE_LABEL } from '../../ai/prompts';
+import { PROFILE_LABEL, PROFILE_STYLE } from '../../ai/prompts';
 import { candidates, isRoute, route } from '../../ai/router';
 import { describeError, readyMap, testModel, type Statuses } from '../../ai/run';
-import { cleanBaseUrl, PROVIDER_IDS, PROVIDER_INFO, TASK_CLASS_LABEL, TASK_CLASSES, isLocal, updateSettings, type Mode, type ProfileId, type ProviderId, type Settings } from '../../store/settings';
+import { cleanBaseUrl, PROFILE_STYLE_MAX, PROVIDER_IDS, PROVIDER_INFO, TASK_CLASS_LABEL, TASK_CLASSES, isLocal, updateSettings, type Mode, type ProfileId, type ProviderId, type Settings } from '../../store/settings';
 import { IconLock, IconRefresh } from '../design/icons';
 
 const MODES: Array<[Mode, string, string]> = [
@@ -24,6 +24,45 @@ function dotClass(st?: ProviderStatus): string {
   if (st.state === 'offline' || st.state === 'no-permission' || st.state === 'refused') return 'warn';
   if (st.state === 'error') return 'err';
   return 'off';
+}
+
+/**
+ * Edits the chosen profile's answer style in the user's own words. Only this line of the instructions is editable: the
+ * rules around it (captured content is untrusted data, Markdown, no invented facts) always stay.
+ */
+function ProfileStyleEditor({ profile, custom, toast }: { profile: ProfileId; custom?: string; toast: (m: string) => void }) {
+  const [draft, setDraft] = useState(custom ?? PROFILE_STYLE[profile]);
+  const saved = custom ?? PROFILE_STYLE[profile];
+  const changed = draft.trim() !== saved;
+  const save = () =>
+    void updateSettings((cur) => {
+      const v = draft.trim().slice(0, PROFILE_STYLE_MAX);
+      if (!v || v === PROFILE_STYLE[profile]) delete cur.profileStyles[profile];
+      else cur.profileStyles[profile] = v;
+    }).then(() => toast(`${PROFILE_LABEL[profile]} style saved.`));
+  const reset = () => {
+    setDraft(PROFILE_STYLE[profile]);
+    void updateSettings((cur) => void delete cur.profileStyles[profile]).then(() => toast(`${PROFILE_LABEL[profile]} style reset.`));
+  };
+  return (
+    <div className="field" data-testid="profile-style">
+      <label htmlFor="profile-style" className="label">
+        How the {PROFILE_LABEL[profile]} style should answer {custom ? <span className="help">(your wording)</span> : null}
+      </label>
+      <textarea id="profile-style" className="input" value={draft} maxLength={PROFILE_STYLE_MAX} onChange={(e) => setDraft(e.target.value)} aria-describedby="profile-style-help" />
+      <span id="profile-style-help" className="help">
+        Added to every AI request in this style. Eidetic’s own rules stay in place: captured text is treated as data, never as instructions. {draft.length}/{PROFILE_STYLE_MAX}
+      </span>
+      <div className="row-gap">
+        <button type="button" className="btn small" onClick={save} disabled={!changed || !draft.trim()}>
+          Save style
+        </button>
+        <button type="button" className="btn small ghost" onClick={reset} disabled={!custom}>
+          Reset to default
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export function AiModels({ settings: s, statuses, checking, refresh, toast }: { settings: Settings; statuses: Statuses; checking: boolean; refresh: (only?: ProviderId) => Promise<void>; toast: (m: string) => void }) {
@@ -196,6 +235,7 @@ export function AiModels({ settings: s, statuses, checking, refresh, toast }: { 
             </span>
           </label>
         </div>
+        <ProfileStyleEditor key={s.profile} profile={s.profile} custom={s.profileStyles[s.profile]} toast={toast} />
       </section>
 
       <section className="ws-section" aria-labelledby="prov-h">

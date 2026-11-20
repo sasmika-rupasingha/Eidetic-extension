@@ -37,3 +37,6 @@ OCR quality matters more than size; captures are stored as PNG with a small JPEG
 
 ### D12. Unit tests run in Node by default
 Creating jsdom for every test file took most of the unit run (about 56 s). Tests now run in Node; a file that needs the DOM opts in with `// @vitest-environment jsdom` on its first line (only `markdown.test.tsx` today). Each file keeps its own isolated environment, so the fake IndexedDB is not shared between files.
+
+### D13. Editable profiles change only the answer style
+Users can rewrite each profile's answer style (up to 600 characters, Settings › AI models). The rest of the system prompt stays fixed and comes after the style: captured content is untrusted data inside `<content>` tags, answers are Markdown, no invented facts. This keeps the prompt-injection protection out of the user's (or a pasted text's) reach while still letting people shape answers. Per-profile model choice is left for later.

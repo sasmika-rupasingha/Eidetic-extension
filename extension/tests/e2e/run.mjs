@@ -252,6 +252,30 @@ try {
   await until(async () => ((await panel.locator('[data-testid=answer][aria-busy=false]').count()) ? true : null), 20_000);
   check('in Private mode, the same action stays on this computer', server.requests.filter((r) => r.via === 'gemini').length === before && server.requests.at(-1)?.via === 'ollama');
   check('the panel shows Private mode', /Private/.test((await panel.locator('.mode-chip').textContent()) ?? ''));
+
+  section('Your own answer style');
+  const styleWs = await ctx.newPage();
+  await styleWs.goto(`${base}/workspace.html#/settings/ai`);
+  const STYLE = 'Answer like a patient tutor with one short example.';
+  await styleWs.fill('#profile-style', STYLE);
+  await styleWs.getByRole('button', { name: 'Save style' }).click();
+  const stored = await until(async () => (await control.evaluate(async () => (await chrome.storage.local.get('settings')).settings?.profileStyles?.general)) === STYLE, 5000);
+  check('saves the edited style for the chosen profile', Boolean(stored));
+  await site.bringToFront();
+  const beforeStyle = server.requests.length;
+  await panel.getByRole('button', { name: 'More' }).click();
+  await panel.getByRole('menuitem', { name: /Analyse/ }).click();
+  const styled = await until(async () => server.requests.slice(beforeStyle).find((r) => r.via === 'ollama' && JSON.stringify(r.body).includes(STYLE)), 20_000);
+  check('sends the user’s style to the model, with the untrusted-content rule still in place', Boolean(styled) && JSON.stringify(styled.body).includes('untrusted'));
+  await until(async () => ((await panel.locator('[data-testid=answer][aria-busy=false]').count()) ? true : null), 20_000);
+  await styleWs.getByRole('button', { name: 'Reset to default' }).click();
+  const cleared = await until(async () => (await control.evaluate(async () => (await chrome.storage.local.get('settings')).settings?.profileStyles?.general)) === undefined, 5000);
+  const shownAfterReset = await until(async () => {
+    const v = await styleWs.inputValue('#profile-style');
+    return v && v !== STYLE ? v : null;
+  }, 5000);
+  check('Reset to default goes back to the built-in style', Boolean(cleared) && Boolean(shownAfterReset), `stored cleared: ${Boolean(cleared)}, box: ${await styleWs.inputValue('#profile-style')}`);
+  await styleWs.close();
   await setSettings({ mode: 'auto' });
 
   section('A page Chrome never lets extensions capture');

@@ -101,7 +101,7 @@ export async function runAi(
   const r = route(def.cls, s, readyMap(statuses), { hasImage: Boolean(ctx.image) });
   if (!isRoute(r)) throw new AiError(r.error, 'setup', r.hint);
   opts.onRoute?.(r);
-  const req = buildPrompt(task, r.sendImage ? ctx : { ...ctx, image: undefined }, s.profile, { question: opts.question, history: opts.history, translateTo: s.translateTo });
+  const req = buildPrompt(task, r.sendImage ? ctx : { ...ctx, image: undefined }, s.profile, { question: opts.question, history: opts.history, translateTo: s.translateTo, style: s.profileStyles[s.profile] });
   try {
     return { text: await callProvider(r, s, r.sendImage ? req : withoutImages(req), opts), route: r };
   } catch (e) {

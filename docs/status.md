@@ -13,7 +13,7 @@ What is finished, what isn't, and what is known to be limited. Nothing listed as
 | Actions | Per-kind primary / secondary / More; local actions: copy text, error, code, equation, table (Excel, Markdown, CSV), calendar link with time and place, vCard, email, call, open/copy link, web search, read aloud, download image, safe copy; AI actions: 28 tasks |
 | AI Model Hub | 8 providers; model discovery; vision / code / context detection (Ollama /api/show, LM Studio /api/v0/models, names otherwise; a model that rejects an image is remembered as text-only and the request is retried with text); connection status with recovery hints; Test buttons; default model per provider |
 | Routing | Auto / Manual / Private; per-class choice in Manual; reasons shown ("Why this model?"); Private enforced in router and request layer; translation uses Chrome's on-device translator first when available |
-| Profiles | General, Study, Developer, Research, Writing (answer style) |
+| Profiles | General, Study, Developer, Research, Writing (answer style); each style editable in your own words (Settings › AI models), with Reset to default. Only the style line is editable: the rules that captured text is untrusted data, Markdown answers and no invented facts always stay and come after it |
 | Answers | Streaming Markdown (never HTML), stop, follow-up conversation, saved with the capture, "Sends the text to …" shown before cloud requests |
 | Library | IndexedDB; catalogue numbers; temporary vs kept; pins; notes; typo-tolerant search with match reasons; filters; bulk keep/delete with preview; workspace tab at full width |
 | Video | Timestamp, duration, title; resume link only where real (YouTube, video files) |
@@ -27,7 +27,7 @@ What is finished, what isn't, and what is known to be limited. Nothing listed as
 |---|---|
 | v2 Intelligence | Visual Memory connections between captures (fields already in the data model), multi-capture workspace (compare, combine, contradictions, comparison tables), workspaces and projects, Study notebooks with saved flashcards / quizzes and progress, learning-gap suggestions, semantic search with local embeddings |
 | v3 Watch | Capture & Compare, website monitoring (text of a chosen area), duplicate / similar detection, smart cleanup, full backup with images and import |
-| Smaller items | Editable AI profile prompts (profiles exist, prompts are fixed); per-capture OCR language choice; a blur brush for areas the detector didn't find; Firefox-specific testing of the panel button |
+| Smaller items | Per-capture OCR language choice; a blur brush for areas the detector didn't find; Firefox-specific testing of the panel button |
 
 ## Known limitations
 
@@ -41,8 +41,8 @@ What is finished, what isn't, and what is known to be limited. Nothing listed as
 ## Test results (20 Nov 2026)
 
 - Types: clean. Lint (oxlint): clean.
-- Unit: 91/91 passed (13 files), about 8 s. Tests run in Node; only the files that render React (`markdown.test.tsx`, `access-help.test.tsx`) use jsdom.
-- End-to-end: 44/44 run checks passed in Edge 157 via `CHROME_PATH` (OCR, detection, actions, streaming answers, follow-ups, local-only refinement, Auto vs Private routing against a mock cloud provider, privacy, PDF viewer, browser pages, search, AI settings, themes, access help shown as one message). The 3 video checks were skipped (no ffmpeg on this PC). Playwright's Chromium 159 (build 1255) doesn't start on Windows 11 build 26300 ("side-by-side configuration is incorrect").
+- Unit: 93/93 passed (13 files), about 9 s. Tests run in Node; only the files that render React (`markdown.test.tsx`, `access-help.test.tsx`) use jsdom.
+- End-to-end: 47/47 run checks passed in Edge 157 via `CHROME_PATH` (OCR, detection, actions, streaming answers, follow-ups, local-only refinement, Auto vs Private routing against a mock cloud provider, custom answer style sent to the model and reset, privacy, PDF viewer, browser pages, search, AI settings, themes, access help shown as one message). The 3 video checks were skipped (no ffmpeg on this PC). Playwright's Chromium 159 (build 1255) doesn't start on Windows 11 build 26300 ("side-by-side configuration is incorrect").
 
 ## Fixed after v1.0.0 (20 Nov 2026)
 
