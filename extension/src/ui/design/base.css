@@ -103,6 +103,7 @@ textarea.input { padding: 10px 12px; min-height: 84px; resize: vertical; line-he
 .note.warn { background: var(--warn-soft); }
 .note.err { background: var(--err-soft); }
 .note.ok { background: var(--ok-soft); }
+.note.ok { background: var(--ok-soft); }
 .note > svg { flex-shrink: 0; margin-top: 2px; }
 .note .hint { color: var(--muted); }
 .dashed { border: 1px dashed var(--line); border-radius: var(--r-md); padding: 14px; color: var(--muted); font-size: 12.5px; line-height: 1.5; }

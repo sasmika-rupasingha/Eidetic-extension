@@ -53,11 +53,22 @@ export interface Capture {
   // Later releases
   workspaceId?: string;
   relations: Array<{ id: string; reason: string; by: 'rules' | 'ai' | 'user'; removed?: boolean }>;
+  /** Perceptual hash of the image (dHash, 16 hex digits). */
   hash?: string;
+  /** The area chosen on the page, in CSS pixels of the viewport it was taken in (Capture & Compare re-uses it). */
+  area?: { rect: { x: number; y: number; w: number; h: number }; viewport: { w: number; h: number } };
+  /** Capture & Compare: the earlier capture (baseline) this one is compared with. */
+  compareTo?: string;
+  /** Meaning vector from a local embedding model (search by meaning, Visual Memory). */
+  embedding?: { model: string; vector: number[]; at: number };
 }
 
 const DB_NAME = 'eidetic';
-const DB_VERSION = 1;
+/** Small record stores added in v2/v3 (each record has an id). */
+export const RECORD_STORES = ['workspaces', 'notebooks', 'monitors'] as const;
+export type RecordStore = (typeof RECORD_STORES)[number];
+/** 2 (v2.0): adds the workspaces, notebooks and monitors stores; capture records are unchanged. */
+const DB_VERSION = 2;
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -70,6 +81,7 @@ export function openDb(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains('captures')) db.createObjectStore('captures', { keyPath: 'id' }).createIndex('createdAt', 'createdAt');
       if (!db.objectStoreNames.contains('blobs')) db.createObjectStore('blobs');
       if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta');
+      for (const name of RECORD_STORES) if (!db.objectStoreNames.contains(name)) db.createObjectStore(name, { keyPath: 'id' });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => {
@@ -87,7 +99,7 @@ export async function resetDbForTests(): Promise<void> {
   if (p) (await p.catch(() => null))?.close();
 }
 
-function done(tx: IDBTransaction): Promise<void> {
+export function done(tx: IDBTransaction): Promise<void> {
   return new Promise((resolve, reject) => {
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error ?? new Error('Library write failed.'));
@@ -95,7 +107,7 @@ function done(tx: IDBTransaction): Promise<void> {
   });
 }
 
-function request<T>(r: IDBRequest<T>): Promise<T> {
+export function request<T>(r: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     r.onsuccess = () => resolve(r.result);
     r.onerror = () => reject(r.error);
@@ -116,7 +128,7 @@ export function siteOf(url: string): string {
 }
 
 /** Saves a new capture with its image. Returns the stored record (with its catalogue number). */
-export async function addCapture(input: { image: Blob; w: number; h: number; thumb: string; source: Capture['source']; video?: VideoMoment; needsCrop?: boolean }): Promise<Capture> {
+export async function addCapture(input: { image: Blob; w: number; h: number; thumb: string; source: Capture['source']; video?: VideoMoment; needsCrop?: boolean; area?: Capture['area']; compareTo?: string }): Promise<Capture> {
   const db = await openDb();
   const tx = db.transaction(['captures', 'blobs', 'meta'], 'readwrite');
   const meta = tx.objectStore('meta');
@@ -133,6 +145,8 @@ export async function addCapture(input: { image: Blob; w: number; h: number; thu
     ...(input.video ? { video: input.video } : {}),
     image: { blobId, w: input.w, h: input.h, bytes: input.image.size, mime: input.image.type || 'image/png', thumb: input.thumb },
     ...(input.needsCrop ? { needsCrop: true } : {}),
+    ...(input.area ? { area: input.area } : {}),
+    ...(input.compareTo ? { compareTo: input.compareTo } : {}),
     processing: 'new',
     notes: '',
     ai: {},
@@ -168,6 +182,7 @@ export async function replaceImage(id: string, image: Blob, w: number, h: number
   }
   tx.objectStore('blobs').put(image, cap.image.blobId);
   const next: Capture = { ...cap, needsCrop: false, image: { ...cap.image, w, h, bytes: image.size, mime: image.type || 'image/png', thumb } };
+  delete next.hash; // computed again for the new image
   tx.objectStore('captures').put(next);
   await done(tx);
   notifyChanged(id);

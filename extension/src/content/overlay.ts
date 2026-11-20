@@ -13,7 +13,8 @@ export interface OverlayResult {
   video?: { time: number; duration?: number; title: string; url: string };
 }
 
-export function captureOverlay(screenshot: string, accent: string): Promise<OverlayResult | null> {
+/** `preset`: a box to start with (Capture & Compare on the same page), in CSS pixels of this viewport. */
+export function captureOverlay(screenshot: string, accent: string, preset?: { x: number; y: number; w: number; h: number; vw?: number; vh?: number } | null): Promise<OverlayResult | null> {
   return new Promise((resolve) => {
     document.getElementById('eidetic-capture-host')?.remove();
     const host = document.createElement('div');
@@ -273,6 +274,14 @@ export function captureOverlay(screenshot: string, accent: string): Promise<Over
       e.preventDefault();
       finish(null);
     });
+    if (preset && preset.w >= MIN && preset.h >= MIN) {
+      // Chosen in a window of another size: scale it to this one.
+      const sx = preset.vw ? vw / preset.vw : 1;
+      const sy = preset.vh ? vh / preset.vh : 1;
+      rect = clampRect({ x: preset.x * sx, y: preset.y * sy, w: preset.w * sx, h: preset.h * sy });
+      hint.lastElementChild!.textContent = 'Same area as before. Press Enter to capture, or adjust it.';
+      draw();
+    }
     void handles;
   });
 }
