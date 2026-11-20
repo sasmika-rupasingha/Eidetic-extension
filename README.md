@@ -42,7 +42,7 @@ Load `extension\dist\chromium` at `chrome://extensions` (Developer mode › Load
 | | |
 |---|---|
 | `npm test` | 87 unit tests: content detection, routing (Auto/Manual/Private), privacy detectors, search, actions, calendar and vCard export, video links, the capture store, settings, prompts, provider wire formats and model discovery |
-| `npm run e2e` | Loads the built extension into real Chromium: 50 checks with a test site, a mock Ollama and a mock cloud provider, covering capture → OCR → detection → actions → streamed answers, follow-ups, local-only refinement, Private mode, privacy findings, video moments, the PDF viewer, library search, AI settings, themes and the first-capture access help |
+| `npm run e2e` | Loads the built extension into real Chromium: 52 checks with a test site, a mock Ollama and a mock cloud provider, covering capture → OCR → detection → actions → streamed answers, follow-ups, local-only refinement, Private mode, privacy findings, video moments, the PDF viewer, library search, AI settings, themes and the first-capture access help |
 
 ## Project
 

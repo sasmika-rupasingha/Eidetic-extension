@@ -42,6 +42,8 @@ export interface Capture {
   processing: 'new' | 'reading' | 'done' | 'error';
   error?: string;
   ocr?: { text: string; langs: string[]; confidence: number; lines: OcrLine[] };
+  /** Languages chosen for this capture ("Read again in…"); without it the OCR languages from Settings are used. */
+  ocrLangs?: string[];
   qr?: string | null;
   detection?: Detection;
   privacy?: { findings: PrivacyFinding[] };

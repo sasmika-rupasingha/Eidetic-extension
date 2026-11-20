@@ -4,12 +4,12 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { actionsFor, type ActionDef } from '../../actions/registry';
-import { refineLocally, processCapture } from '../../capture/pipeline';
+import { readingLanguages, refineLocally, processCapture, rereadCapture } from '../../capture/pipeline';
 import { formatTime } from '../../capture/capture';
 import { readyMap, type Statuses } from '../../ai/run';
 import { PRIVACY_LABEL, PRIVACY_NOUN } from '../../privacy/detect';
 import { deleteCaptures, formatNumber, updateCapture, type Capture } from '../../store/captures';
-import type { Settings } from '../../store/settings';
+import { OCR_LANGUAGES, type Settings } from '../../store/settings';
 import { IconAlert, IconCheck, IconChevron, IconCopy, IconExternal, IconFix, IconInfo, IconLock, IconPlay, IconSend, IconShield, IconTrash } from '../design/icons';
 import { Markdown } from './markdown';
 import { CropMarks, Dialog, Menu } from './components';
@@ -353,6 +353,30 @@ export function ResultView({ capture, settings, statuses, toast, wide = false, o
             </button>
           </div>
           {showText ? <pre className="ocr-text" data-testid="ocr-text">{c.ocr.text || '(No text recognised)'}</pre> : null}
+          <div className="field reread" data-testid="reread">
+            <label htmlFor={`reread-${c.id}`} className="help">
+              Read in {c.ocr.langs.map((l) => OCR_LANGUAGES[l] ?? l).join(' + ')}. Wrong language? Read it again in:
+            </label>
+            <select
+              id={`reread-${c.id}`}
+              className="input"
+              value=""
+              disabled={c.processing !== 'done'}
+              onChange={(e) => {
+                const code = e.target.value;
+                if (!code) return;
+                void rereadCapture(c.id, code).then(() => toast(`Reading again in ${readingLanguages(code).map((l) => OCR_LANGUAGES[l]).join(' + ')}…`));
+              }}
+            >
+              <option value="">Choose a language…</option>
+              {Object.entries(OCR_LANGUAGES).map(([code, name]) => (
+                <option key={code} value={code}>
+                  {code === 'eng' ? name : `${name} + English`}
+                </option>
+              ))}
+            </select>
+            <span className="help">Languages other than English download once (a few MB), then work offline. The text never leaves this computer.</span>
+          </div>
         </section>
       ) : null}
 

@@ -8,7 +8,7 @@ What is finished, what isn't, and what is known to be limited. Nothing listed as
 |---|---|
 | Design system | Tokens for every colour, size and motion; light (warm paper) and dark (graphite) themes designed separately; System option; four accents; applied instantly without reload or flash; remembered; reduced motion; visible focus; 44 px targets |
 | Smart Capture | Shortcut, right-click menu (area / visible page), panel buttons; frozen overlay with drag, 8 resize handles, move, arrow-key nudge, Enter / F / Esc, focus kept in its toolbar; paste, drop and open-file; PDF viewer (overlay, or crop in the panel when a page refuses scripts) |
-| OCR | Offline Tesseract in a worker, reused and closed when idle; 16 languages selectable (English built in, others downloaded once); QR codes |
+| OCR | Offline Tesseract in a worker, reused and closed when idle; 16 languages selectable (English built in, others downloaded once); QR codes; each capture says which languages it was read in and can be read again in another one (with English, for mixed slides), which re-detects it, re-scans it for private details and refreshes the local description |
 | Detection | Rules-first classifier for 15 kinds with specific descriptions; optional refinement by a *local* model only, labelled with the model's name |
 | Actions | Per-kind primary / secondary / More; local actions: copy text, error, code, equation, table (Excel, Markdown, CSV), calendar link with time and place, vCard, email, call, open/copy link, web search, read aloud, download image, safe copy; AI actions: 28 tasks |
 | AI Model Hub | 8 providers; model discovery; vision / code / context detection (Ollama /api/show, LM Studio /api/v0/models, names otherwise; a model that rejects an image is remembered as text-only and the request is retried with text); connection status with recovery hints; Test buttons; default model per provider |
@@ -27,7 +27,7 @@ What is finished, what isn't, and what is known to be limited. Nothing listed as
 |---|---|
 | v2 Intelligence | Visual Memory connections between captures (fields already in the data model), multi-capture workspace (compare, combine, contradictions, comparison tables), workspaces and projects, Study notebooks with saved flashcards / quizzes and progress, learning-gap suggestions, semantic search with local embeddings |
 | v3 Watch | Capture & Compare, website monitoring (text of a chosen area), duplicate / similar detection, smart cleanup, full backup with images and import |
-| Smaller items | Per-capture OCR language choice; a blur brush for areas the detector didn't find; Firefox-specific testing of the panel button |
+| Smaller items | A blur brush for areas the detector didn't find; Firefox-specific testing of the panel button |
 
 ## Known limitations
 
@@ -41,8 +41,8 @@ What is finished, what isn't, and what is known to be limited. Nothing listed as
 ## Test results (20 Nov 2026)
 
 - Types: clean. Lint (oxlint): clean.
-- Unit: 93/93 passed (13 files), about 9 s. Tests run in Node; only the files that render React (`markdown.test.tsx`, `access-help.test.tsx`) use jsdom.
-- End-to-end: 47/47 run checks passed in Edge 157 via `CHROME_PATH` (OCR, detection, actions, streaming answers, follow-ups, local-only refinement, Auto vs Private routing against a mock cloud provider, custom answer style sent to the model and reset, privacy, PDF viewer, browser pages, search, AI settings, themes, access help shown as one message). The 3 video checks were skipped (no ffmpeg on this PC). Playwright's Chromium 159 (build 1255) doesn't start on Windows 11 build 26300 ("side-by-side configuration is incorrect").
+- Unit: 95/95 passed (14 files), about 8 s. Tests run in Node; only the files that render React (`markdown.test.tsx`, `access-help.test.tsx`) use jsdom.
+- End-to-end: 49/49 run checks passed in Edge 157 via `CHROME_PATH` (OCR, reading a capture again, detection, actions, streaming answers, follow-ups, local-only refinement, Auto vs Private routing against a mock cloud provider, custom answer style sent to the model and reset, privacy, PDF viewer, browser pages, search, AI settings, themes, access help shown as one message). The 3 video checks were skipped (no ffmpeg on this PC). Playwright's Chromium 159 (build 1255) doesn't start on Windows 11 build 26300 ("side-by-side configuration is incorrect").
 
 ## Fixed after v1.0.0 (20 Nov 2026)
 

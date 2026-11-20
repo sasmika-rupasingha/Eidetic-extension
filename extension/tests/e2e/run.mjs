@@ -123,6 +123,14 @@ try {
   const ocr = await panel.locator('[data-testid=ocr-text]').textContent();
   check('reads the text offline', /ModuleNotFoundError/.test(ocr ?? '') && /pandas/.test(ocr ?? ''), ocr ?? '');
   check('shows the catalogue number and temporary status', /№ 0001 · Temporary/.test((await panel.locator('.result-foot').textContent()) ?? ''));
+  check('says which language the text was read in', /Read in English\./.test((await panel.locator('[data-testid=reread]').textContent()) ?? ''));
+  await panel.selectOption('select[id^=reread-]', 'eng');
+  const rereading = await until(async () => ((await panel.getByText('Reading the text on this computer').count()) ? true : null), 5000, 50);
+  const reread = await until(async () => {
+    const t = await panel.locator('[data-testid=ocr-text]').textContent({ timeout: 500 });
+    return /ModuleNotFoundError/.test(t ?? '') && (await panel.locator('select[id^=reread-]:not([disabled])').count()) ? t : null;
+  }, 90_000);
+  check('reads a capture again in the language chosen for it', Boolean(rereading) && Boolean(reread) && (await resultLabel(/Programming error/)) !== null);
   if (shots) await panel.screenshot({ path: join(shots, 'panel-result-noai-light.png') });
 
   section('Connecting a local model (mock Ollama)');

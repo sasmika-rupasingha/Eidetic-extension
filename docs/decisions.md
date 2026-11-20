@@ -40,3 +40,6 @@ Creating jsdom for every test file took most of the unit run (about 56 s). Tests
 
 ### D13. Editable profiles change only the answer style
 Users can rewrite each profile's answer style (up to 600 characters, Settings › AI models). The rest of the system prompt stays fixed and comes after the style: captured content is untrusted data inside `<content>` tags, answers are Markdown, no invented facts. This keeps the prompt-injection protection out of the user's (or a pasted text's) reach while still letting people shape answers. Per-profile model choice is left for later.
+
+### D14. Reading a capture again in another language
+A capture can be read again in a language chosen for it alone; the choice is stored on the capture (`ocrLangs`) and Settings stay the default for new captures. A language other than English is always read together with English, because slides and screenshots usually mix scripts. Reading again re-runs detection and the privacy scan and clears the AI description (it described the old text); saved answers and notes stay. The e2e run re-reads in English only, since other languages are downloaded from jsDelivr.

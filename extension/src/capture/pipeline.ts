@@ -11,7 +11,7 @@ import { readQr } from '../ocr/qr';
 import { findSensitive } from '../privacy/detect';
 import { blobToDataUrl } from '../shared/image';
 import { getCapture, getImage, updateCapture, type Capture } from '../store/captures';
-import type { Settings } from '../store/settings';
+import { OCR_LANGUAGES, type Settings } from '../store/settings';
 
 const running = new Map<string, Promise<Capture | undefined>>();
 
@@ -27,7 +27,8 @@ export function processCapture(id: string, s: Settings, onProgress?: OcrProgress
       const blob = await getImage(cap.image.blobId);
       if (!blob) throw new Error('The image of this capture is missing.');
       const dataUrl = await blobToDataUrl(blob);
-      const [ocr, qr] = await Promise.all([recognize(dataUrl, s.ocrLanguages, onProgress), readQr(dataUrl)]);
+      const langs = cap.ocrLangs?.length ? cap.ocrLangs : s.ocrLanguages;
+      const [ocr, qr] = await Promise.all([recognize(dataUrl, langs, onProgress), readQr(dataUrl)]);
       const detection = classify({ text: ocr.text, lines: ocr.lines, qr, source: { title: cap.source.title, site: cap.source.site } });
       const findings = findSensitive(ocr.text, ocr.lines);
       return await updateCapture(id, (c) => {
@@ -47,6 +48,30 @@ export function processCapture(id: string, s: Settings, onProgress?: OcrProgress
   })().finally(() => running.delete(id));
   running.set(id, job);
   return job;
+}
+
+/**
+ * The languages to read a capture in when the user picks one: that language together with English (slides and
+ * screenshots usually mix scripts), or English alone. Unknown codes fall back to English.
+ */
+export function readingLanguages(code: string): string[] {
+  if (!(code in OCR_LANGUAGES) || code === 'eng') return ['eng'];
+  return [code, 'eng'];
+}
+
+/**
+ * "Read again in…": remembers the languages for this capture and marks it for reading again. Whoever shows the capture
+ * (the result view) then reads it, detects it and scans it for private details anew, and refines it locally. The old
+ * AI description is cleared because it described the old text; saved answers and notes stay.
+ */
+export async function rereadCapture(id: string, code: string): Promise<Capture | undefined> {
+  if (running.has(id)) return getCapture(id);
+  return updateCapture(id, (c) => {
+    c.ocrLangs = readingLanguages(code);
+    c.processing = 'new';
+    c.ai = {};
+    delete c.error;
+  });
 }
 
 /** Improves the description, keywords and topics with a model on this computer, if one is ready. Silent on failure. */
