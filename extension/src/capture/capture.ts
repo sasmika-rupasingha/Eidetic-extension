@@ -22,7 +22,8 @@ export const OVERLAY_ACCENT: Record<Accent, string> = { ultramarine: '#97A3FF', 
 
 /** Where the panel learns that a capture was just taken, or that one is in progress. */
 export const SESSION_LATEST = 'latestCapture';
-export type LatestCapture = { id: string; at: number } | { selecting: true; at: number } | { cancelled: true; at: number } | { error: string; at: number };
+/** `access` marks a failure caused by Chrome not letting Eidetic see the page (the panel shows access help, not an error). */
+export type LatestCapture = { id: string; at: number } | { selecting: true; at: number } | { cancelled: true; at: number } | { error: string; access?: true; at: number };
 
 const isAccessError = (e: unknown) => /permission|cannot access|activeTab|not allowed|Missing host|cannot be scripted/i.test(String((e as Error)?.message ?? e));
 
@@ -127,7 +128,7 @@ export async function captureTab(tab: chrome.tabs.Tab, mode: 'area' | 'full' = '
       : undefined;
     return await saveImage(crop.dataUrl, crop.w, crop.h, pageSource(picked.url, picked.title), video ? { video } : {});
   } catch (e) {
-    await setLatest({ error: (e as Error).message, at: Date.now() });
+    await setLatest({ error: (e as Error).message, ...(e instanceof AccessError ? { access: true as const } : {}), at: Date.now() });
     throw e;
   }
 }

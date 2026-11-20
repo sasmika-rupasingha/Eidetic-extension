@@ -41,8 +41,13 @@ What is finished, what isn't, and what is known to be limited. Nothing listed as
 ## Test results (20 Nov 2026)
 
 - Types: clean. Lint (oxlint): clean.
-- Unit: 87/87 passed (12 files), about 7 s. Tests run in Node; only `markdown.test.tsx` uses jsdom.
-- End-to-end in real Chromium: 44/44 passed (OCR, detection, actions, streaming answers, follow-ups, local-only refinement, Auto vs Private routing against a mock cloud provider, privacy, video moment, PDF viewer, search, AI settings, themes, access help).
+- Unit: 90/90 passed (13 files), about 8 s. Tests run in Node; only the files that render React (`markdown.test.tsx`, `access-help.test.tsx`) use jsdom.
+- End-to-end: 42/42 run checks passed in Edge 157 via `CHROME_PATH` (OCR, detection, actions, streaming answers, follow-ups, local-only refinement, Auto vs Private routing against a mock cloud provider, privacy, PDF viewer, search, AI settings, themes, access help shown as one message). The 3 video checks were skipped (no ffmpeg on this PC). Playwright's Chromium 159 (build 1255) doesn't start on Windows 11 build 26300 ("side-by-side configuration is incorrect").
+
+## Fixed after v1.0.0 (20 Nov 2026)
+
+- A capture refused for lack of access showed both a red "Couldn't capture" error and the access help; it now shows only the access help.
+- When Eidetic is already allowed on all sites but a page still refuses capture, the panel no longer asks for access again. It explains the likely cause (local files need "Allow access to file URLs", site settings or a policy blocking extensions, or a page opened before access was given) and links to Eidetic's details.
 
 ## Security and performance notes
 

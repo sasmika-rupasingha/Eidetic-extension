@@ -330,6 +330,8 @@ try {
   await panel.click('[data-testid=capture]');
   const help = await until(async () => panel.locator('[data-testid=access-help]').textContent({ timeout: 500 }), 10_000);
   check('explains the two ways to allow capture instead of a dead end', /Alt/.test(help ?? '') && /Allow on all sites/.test(help ?? ''), help ?? '');
+  await panel.waitForTimeout(500);
+  check('shows one message, not also a “Couldn’t capture” error', (await panel.locator('[data-testid=capture-error]').count()) === 0);
 } catch (e) {
   console.error(e);
   failures += 1;

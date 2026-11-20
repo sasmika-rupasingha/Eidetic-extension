@@ -34,7 +34,7 @@ After any code change: `npm run build`, then press the reload icon on Eidetic's 
 
 Change them at `chrome://extensions/shortcuts`.
 
-**First capture on a site:** Chrome only shows a page to an extension after you click its toolbar icon on that page, use the shortcut or the right-click menu. If you press the panel's Capture button on a page Eidetic can't see yet, the panel tells you the two ways in (shortcut on the page, or Allow on all sites).
+**First capture on a site:** Chrome only shows a page to an extension after you click its toolbar icon on that page, use the shortcut or the right-click menu. If you press the panel's Capture button on a page Eidetic can't see yet, the panel tells you the two ways in (shortcut on the page, or Allow on all sites). If Eidetic is already allowed on all sites and a page still can't be captured, the panel says why instead: files opened from your computer (`file://`) also need **Allow access to file URLs** in Eidetic's details on `chrome://extensions`, and Chrome's site settings or an organisation policy can block extensions on a site.
 
 ## 4. Connect AI (optional)
 
@@ -74,7 +74,8 @@ Gemini (free tier at aistudio.google.com/apikey), OpenAI, Anthropic, OpenRouter 
 ```powershell
 npm run typecheck; npm run lint; npm test
 npx playwright install chromium     # once
-npm run e2e                         # or: $env:CHROME_PATH = "C:\Program Files\Google\Chrome\Application\chrome.exe"; npm run e2e
+npm run e2e                         # or with Edge: $env:CHROME_PATH = "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"; npm run e2e
+                                    # (Google Chrome ignores --load-extension, so it can't run these tests; use Playwright's Chromium or Edge)
 npm run lint:firefox
 ```
 

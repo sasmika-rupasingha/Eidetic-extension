@@ -28,6 +28,13 @@ export function App() {
   const [captureError, setCaptureError] = useState<string | null>(null);
   const resultCap = useCapture(view.name === 'result' ? view.id : null);
 
+  /** One message for an access failure: the access help (never also the red error card). */
+  const showAccess = useCallback(async (mode: 'area' | 'full') => {
+    const granted = await chrome.permissions.contains({ origins: ['<all_urls>'] }).catch(() => false);
+    setCaptureError(null);
+    setAccess({ mode, granted });
+  }, []);
+
   // Follow captures taken from the shortcut, the right-click menu or the panel.
   useEffect(() => {
     const onLatest = (v: LatestCapture | undefined) => {
@@ -36,7 +43,10 @@ export function App() {
       else {
         setSelecting(false);
         if ('id' in v) setView({ name: 'result', id: v.id });
-        if ('error' in v) setCaptureError(v.error);
+        if ('error' in v) {
+          if (v.access) void showAccess('area');
+          else setCaptureError(v.error);
+        }
         if ('id' in v) setCaptureError(null);
       }
     };
@@ -46,7 +56,7 @@ export function App() {
     };
     chrome.storage.onChanged.addListener(fn);
     return () => chrome.storage.onChanged.removeListener(fn);
-  }, [show]);
+  }, [show, showAccess]);
 
   useEffect(() => {
     if (settings) void expireTemporary(settings.tempDays).catch(() => undefined);
@@ -71,14 +81,14 @@ export function App() {
             origin = null;
           }
           if (origin && (await chrome.permissions.request({ origins: [origin] }).catch(() => false))) return void capture(mode);
-          setAccess({ mode });
+          await showAccess(mode);
         } else {
           console.warn('Eidetic capture failed:', e);
           setCaptureError((e as Error).message || String(e));
         }
       }
     },
-    [show],
+    [show, showAccess],
   );
 
   /** "Allow on all sites": ask Chrome, then carry straight on with the capture the user wanted. */

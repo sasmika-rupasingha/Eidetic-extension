@@ -7,6 +7,8 @@ import { CaptureRow, Empty } from '../shared/components';
 
 export interface AccessHelp {
   mode: 'area' | 'full';
+  /** Eidetic already has access to all sites, so asking again won't help: something else blocks this page. */
+  granted: boolean;
 }
 
 export function Home({
@@ -119,7 +121,31 @@ export function Home({
           </div>
         ) : null}
 
-        {access ? (
+        {access?.granted ? (
+          <div className="note accent" role="alert" data-testid="access-help" data-granted="true">
+            <IconInfo size={16} />
+            <div className="stack tight">
+              <div>Eidetic is allowed on all sites, but Chrome still blocks this page. Usually that’s because:</div>
+              <ul className="plain">
+                <li>it’s a file on your computer: turn on “Allow access to file URLs” in Eidetic’s details, or</li>
+                <li>Chrome’s site settings or your organisation block extensions on this site, or</li>
+                <li>the page opened before Eidetic was allowed: reload it and try again.</li>
+              </ul>
+              <div className="row-gap">
+                <button type="button" className="btn small soft" onClick={() => onCapture(access.mode)}>
+                  Try again
+                </button>
+                <button
+                  type="button"
+                  className="btn small ghost"
+                  onClick={() => void chrome.tabs.create({ url: navigator.userAgent.includes('Firefox') ? 'about:addons' : `chrome://extensions/?id=${chrome.runtime.id}` })}
+                >
+                  Open Eidetic’s details
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : access ? (
           <div className="note accent" role="alert" data-testid="access-help">
             <IconInfo size={16} />
             <div className="stack tight">
