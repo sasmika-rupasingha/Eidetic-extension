@@ -14,6 +14,7 @@ import { IconAlert, IconCheck, IconChevron, IconCopy, IconExternal, IconFix, Ico
 import { Markdown } from './markdown';
 import { CropMarks, Dialog, Menu } from './components';
 import { CropPicker } from './CropPicker';
+import { HideAreas } from './HideAreas';
 import { timeAgo, useImageUrl } from './hooks';
 import { previewRoute, routeLine, useActions } from './useActions';
 
@@ -28,6 +29,7 @@ export function ResultView({ capture, settings, statuses, toast, wide = false, o
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showText, setShowText] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
+  const [showHide, setShowHide] = useState(false);
   const [note, setNote] = useState(c.notes);
   const noteRef = useRef<HTMLTextAreaElement>(null);
   const answerRef = useRef<HTMLElement>(null);
@@ -84,6 +86,11 @@ export function ResultView({ capture, settings, statuses, toast, wide = false, o
           </span>
           <span>{c.status === 'kept' || c.pinned ? 'Kept' : 'Temporary'}</span>
         </figcaption>
+        {!c.needsCrop && !showHide ? (
+          <button type="button" className="linkish small hide-open" data-testid="hide-open" onClick={() => setShowHide(true)}>
+            <IconShield size={13} /> Hide part of the image…
+          </button>
+        ) : null}
         {c.video ? (
           <div className="video-line" data-testid="video-line">
             <IconPlay size={12} />
@@ -103,6 +110,17 @@ export function ResultView({ capture, settings, statuses, toast, wide = false, o
           </div>
         ) : null}
       </figure>
+
+      {showHide ? (
+        <HideAreas
+          imgUrl={imgUrl}
+          width={c.image.w}
+          height={c.image.h}
+          detected={findings.filter((_, i) => chosen[i]).flatMap((f) => f.boxes)}
+          onDownload={(exact, style) => safeImage(findings.filter((_, i) => chosen[i]).flatMap((f) => f.boxes), style, exact)}
+          onClose={() => setShowHide(false)}
+        />
+      ) : null}
 
       {c.processing === 'reading' || (c.processing === 'new' && !c.needsCrop) ? (
         <div className="note" role="status">
@@ -228,7 +246,12 @@ export function ResultView({ capture, settings, statuses, toast, wide = false, o
                     Copy safe text
                   </button>
                 </div>
-                <div className="small muted">The original capture stays unchanged on this computer.</div>
+                <div className="small muted">
+                  The original capture stays unchanged on this computer. Something missed?{' '}
+                  <button type="button" className="linkish" onClick={() => setShowHide(true)}>
+                    Hide more of the image
+                  </button>
+                </div>
               </div>
             ) : null}
           </div>

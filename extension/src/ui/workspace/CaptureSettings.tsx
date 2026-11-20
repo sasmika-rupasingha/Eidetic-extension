@@ -1,6 +1,7 @@
 /** Settings › Capture and languages: shortcuts, text-recognition languages, translation, search engine, temporary captures. */
 import { useEffect, useState } from 'react';
 import { downloadLanguage, isLanguageReady, removeLanguage } from '../../ocr/ocr';
+import { IS_FIREFOX } from '../../shared/browser';
 import { OCR_LANGUAGES, TRANSLATE_LANGUAGES, updateSettings, type Settings } from '../../store/settings';
 
 export function CaptureSettings({ settings: s, toast }: { settings: Settings; toast: (m: string) => void }) {
@@ -52,9 +53,15 @@ export function CaptureSettings({ settings: s, toast }: { settings: Settings; to
           ))}
         </dl>
         <div>
-          <button type="button" className="btn small" onClick={() => void chrome.tabs.create({ url: navigator.userAgent.includes('Firefox') ? 'about:addons' : 'chrome://extensions/shortcuts' })}>
-            Change shortcuts
-          </button>
+          {IS_FIREFOX ? (
+            <p className="small muted" style={{ margin: 0 }}>
+              To change them in Firefox: menu › Add-ons and themes › the gear button › Manage Extension Shortcuts.
+            </p>
+          ) : (
+            <button type="button" className="btn small" onClick={() => void chrome.tabs.create({ url: 'chrome://extensions/shortcuts' })}>
+              Change shortcuts
+            </button>
+          )}
         </div>
       </section>
 

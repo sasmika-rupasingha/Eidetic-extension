@@ -1,6 +1,7 @@
 /** Capture home: what tab you're on, one clear Capture button, other ways in, and recent captures. */
 import { useEffect, useRef, useState } from 'react';
 import { activeTab, RESTRICTED, saveBlob } from '../../capture/capture';
+import { BROWSER_NAME, IS_FIREFOX } from '../../shared/browser';
 import { siteOf, type Capture } from '../../store/captures';
 import { IconCapture, IconInfo, IconLock } from '../design/icons';
 import { CaptureRow, Empty } from '../shared/components';
@@ -104,7 +105,7 @@ export function Home({
             ) : (
               <>
                 <IconLock size={15} />
-                <span>{known ? 'Captures stay on this computer. Text is read offline.' : 'Eidetic only sees a page when you capture it. Chrome may ask once per site.'}</span>
+                <span>{known ? 'Captures stay on this computer. Text is read offline.' : `Eidetic only sees a page when you capture it. ${BROWSER_NAME} may ask once per site.`}</span>
               </>
             )}
           </div>
@@ -132,34 +133,45 @@ export function Home({
             <IconInfo size={16} />
             <div className="stack tight">
               {access.reason === 'browser-page' ? (
-                <>
-                  <div>Chrome doesn’t let extensions capture this page. It’s one of:</div>
-                  <ul className="plain">
-                    <li>a new tab, or a Chrome page such as Settings or Extensions: open a normal website and capture there,</li>
-                    <li>the Chrome Web Store, or</li>
-                    <li>a file on your computer: turn on “Allow access to file URLs” in Eidetic’s details.</li>
-                  </ul>
-                </>
+                IS_FIREFOX ? (
+                  <>
+                    <div>Firefox doesn’t let extensions capture this page. It’s one of:</div>
+                    <ul className="plain">
+                      <li>a new tab, or a Firefox page such as Settings or Add-ons (about:…): open a normal website and capture there,</li>
+                      <li>the Firefox Add-ons site, or</li>
+                      <li>a file on your computer: paste a screenshot of it into this panel instead (Ctrl+V).</li>
+                    </ul>
+                  </>
+                ) : (
+                  <>
+                    <div>Chrome doesn’t let extensions capture this page. It’s one of:</div>
+                    <ul className="plain">
+                      <li>a new tab, or a Chrome page such as Settings or Extensions: open a normal website and capture there,</li>
+                      <li>the Chrome Web Store, or</li>
+                      <li>a file on your computer: turn on “Allow access to file URLs” in Eidetic’s details.</li>
+                    </ul>
+                  </>
+                )
               ) : (
                 <>
-                  <div>Eidetic is allowed on all sites, but Chrome still blocks this page. Usually that’s because:</div>
+                  <div>Eidetic is allowed on all sites, but {BROWSER_NAME} still blocks this page. Usually that’s because:</div>
                   <ul className="plain">
                     <li>the page opened before Eidetic was allowed: reload it and try again, or</li>
-                    <li>Chrome’s site settings or your organisation block extensions on this site.</li>
+                    <li>{BROWSER_NAME}’s settings or your organisation block extensions on this site.</li>
                   </ul>
                 </>
               )}
-              <div className="row-gap">
+              <div className="row-gap wrap">
                 <button type="button" className="btn small soft" onClick={() => onCapture(access.mode)}>
                   Try again
                 </button>
-                <button
-                  type="button"
-                  className="btn small ghost"
-                  onClick={() => void chrome.tabs.create({ url: navigator.userAgent.includes('Firefox') ? 'about:addons' : `chrome://extensions/?id=${chrome.runtime.id}` })}
-                >
-                  Open Eidetic’s details
-                </button>
+                {IS_FIREFOX ? (
+                  <span className="small muted">Eidetic’s settings in Firefox: menu › Add-ons and themes › Eidetic.</span>
+                ) : (
+                  <button type="button" className="btn small ghost" onClick={() => void chrome.tabs.create({ url: `chrome://extensions/?id=${chrome.runtime.id}` })}>
+                    Open Eidetic’s details
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -167,7 +179,7 @@ export function Home({
           <div className="note accent" role="alert" data-testid="access-help">
             <IconInfo size={16} />
             <div className="stack tight">
-              <div>Chrome hasn’t given Eidetic access to this page yet. Either:</div>
+              <div>{BROWSER_NAME} hasn’t given Eidetic access to this page yet. Either:</div>
               <ul className="plain">
                 <li>
                   click the page, then press <span className="kbd">Alt</span> <span className="kbd">Shift</span> <span className="kbd">E</span> (or right-click › Capture an area), or

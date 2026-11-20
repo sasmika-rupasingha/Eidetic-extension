@@ -1,4 +1,4 @@
-# Eidetic status (v1.0.0, 20 November 2026)
+# Eidetic status (v1.1.0, 20 November 2026)
 
 What is finished, what isn't, and what is known to be limited. Nothing listed as done is a placeholder.
 
@@ -17,7 +17,7 @@ What is finished, what isn't, and what is known to be limited. Nothing listed as
 | Answers | Streaming Markdown (never HTML), stop, follow-up conversation, saved with the capture, "Sends the text to …" shown before cloud requests |
 | Library | IndexedDB; catalogue numbers; temporary vs kept; pins; notes; typo-tolerant search with match reasons; filters; bulk keep/delete with preview; workspace tab at full width |
 | Video | Timestamp, duration, title; resume link only where real (YouTube, video files) |
-| Privacy Shield | 7 kinds of sensitive data, located in the image; masked copy; blacked-out image download; original untouched |
+| Privacy Shield | 7 kinds of sensitive data, located in the image; masked copy; blacked-out image download; "Hide part of the image" for anything the detector missed (drag, or keyboard: Enter adds, arrows move, Shift+arrows resize, Delete removes), black out or pixelate, detected details included; original untouched |
 | Storage | Usage, remove expired / all temporary captures with confirmation, export library text as JSON |
 | Onboarding and states | 3-step first run; loading, empty, error, offline OCR, AI unavailable, local model not running / refused, no models, permission help, storage full message |
 
@@ -27,7 +27,7 @@ What is finished, what isn't, and what is known to be limited. Nothing listed as
 |---|---|
 | v2 Intelligence | Visual Memory connections between captures (fields already in the data model), multi-capture workspace (compare, combine, contradictions, comparison tables), workspaces and projects, Study notebooks with saved flashcards / quizzes and progress, learning-gap suggestions, semantic search with local embeddings |
 | v3 Watch | Capture & Compare, website monitoring (text of a chosen area), duplicate / similar detection, smart cleanup, full backup with images and import |
-| Smaller items | A blur brush for areas the detector didn't find; Firefox-specific testing of the panel button |
+| Smaller items | A hands-on Firefox check of the panel (see Known limitations) |
 
 ## Known limitations
 
@@ -37,12 +37,24 @@ What is finished, what isn't, and what is known to be limited. Nothing listed as
 - Chrome built-in AI needs a capable PC and Google Chrome; other Chromium browsers use Ollama, LM Studio or a key.
 - Ollama needs `OLLAMA_ORIGINS` set to allow browser extensions.
 - Search is word-based (exact, prefix, typo-tolerant); search by meaning comes with v2.
+- **Firefox is checked by build, `web-ext lint` (0 errors; 8 warnings, all from bundled libraries or Chrome-only calls behind a Firefox check) and code review, not by an automated run:** Playwright can't load extensions into Firefox. In Firefox a click inside the sidebar doesn't give Eidetic access to the page (only the toolbar button, shortcut and menu do), so the panel's Capture button needs "Allow on all sites" or the shortcut, which the panel explains. Firefox doesn't let extensions open `about:addons`, so the panel and Settings describe the way to Eidetic's settings and shortcuts instead of linking.
+- Reading a capture again in a language that has to be downloaded (e.g. Sinhala) is tested with mocked OCR, not end to end (the e2e run is offline).
 
 ## Test results (20 Nov 2026)
 
 - Types: clean. Lint (oxlint): clean.
-- Unit: 95/95 passed (14 files), about 8 s. Tests run in Node; only the files that render React (`markdown.test.tsx`, `access-help.test.tsx`) use jsdom.
-- End-to-end: 49/49 run checks passed in Edge 157 via `CHROME_PATH` (OCR, reading a capture again, detection, actions, streaming answers, follow-ups, local-only refinement, Auto vs Private routing against a mock cloud provider, custom answer style sent to the model and reset, privacy, PDF viewer, browser pages, search, AI settings, themes, access help shown as one message). The 3 video checks were skipped (no ffmpeg on this PC). Playwright's Chromium 159 (build 1255) doesn't start on Windows 11 build 26300 ("side-by-side configuration is incorrect").
+- Unit: 101/101 passed (15 files), about 7 s. Tests run in Node; only the files that render React (`markdown.test.tsx`, `access-help.test.tsx`, `hide-areas.test.tsx`) use jsdom.
+- End-to-end: 52/52 run checks passed in Edge 157 via `CHROME_PATH` (OCR, reading a capture again, detection, actions, streaming answers, follow-ups, local-only refinement, Auto vs Private routing against a mock cloud provider, custom answer style sent to the model and reset, privacy, hiding a hand-marked area in the downloaded safe image (and only that area), PDF viewer, browser pages, search, AI settings, themes, access help shown as one message). The 3 video checks were skipped (no ffmpeg on this PC). Playwright's Chromium 159 (build 1255) doesn't start on Windows 11 build 26300 ("side-by-side configuration is incorrect").
+
+- Firefox build: `web-ext lint` 0 errors. Store packages: `dist/eidetic-chromium-1.1.0.zip`, `dist/eidetic-firefox-1.1.0.zip`.
+
+## New in v1.1.0 (20 Nov 2026)
+
+- Editable answer style for each AI profile (D13).
+- Read a capture again in another language (D14).
+- Hide part of the image: mark areas by hand for the safe image (D15).
+- Firefox: the panel and Settings name Firefox, and explain the way to Eidetic's settings and shortcuts instead of links Firefox blocks.
+- Unit tests run in Node, about 7 s instead of 56 s (D12).
 
 ## Fixed after v1.0.0 (20 Nov 2026)
 

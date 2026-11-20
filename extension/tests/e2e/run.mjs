@@ -5,7 +5,7 @@
 //   npm run e2e                    (first: npx playwright install chromium; or set CHROME_PATH)
 //   npm run e2e -- --screenshots   (also writes screenshots to ../shots)
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -192,6 +192,33 @@ try {
   await capture();
   const priv = await until(async () => panel.locator('[data-testid=privacy]').textContent({ timeout: 500 }), 90_000);
   check('Privacy Shield finds the email and the API key', /email address/.test(priv ?? '') && /API key/.test(priv ?? ''), priv ?? '');
+
+  // Hiding an area the detector didn't find: drag over the top-left of the capture, download, check those pixels.
+  await panel.click('[data-testid=hide-open]');
+  const stageBox = await panel.locator('[data-testid=hide-stage]').boundingBox();
+  await panel.mouse.move(stageBox.x + stageBox.width * 0.05, stageBox.y + stageBox.height * 0.05);
+  await panel.mouse.down();
+  await panel.mouse.move(stageBox.x + stageBox.width * 0.2, stageBox.y + stageBox.height * 0.2, { steps: 3 });
+  await panel.mouse.move(stageBox.x + stageBox.width * 0.35, stageBox.y + stageBox.height * 0.35, { steps: 3 });
+  await panel.mouse.up();
+  const marked = await panel.getByRole('button', { name: 'Area 1', exact: true }).count();
+  check('marks an area by dragging', marked === 1, `${marked} matching buttons`);
+  const safePixel = async () => {
+    const [dl] = await Promise.all([panel.waitForEvent('download'), panel.click('[data-testid=hide-download]')]);
+    const b64 = readFileSync(await dl.path()).toString('base64');
+    return control.evaluate(async (data) => {
+      const bmp = await createImageBitmap(await (await fetch(`data:image/png;base64,${data}`)).blob());
+      const c = new OffscreenCanvas(bmp.width, bmp.height);
+      const ctx = c.getContext('2d');
+      ctx.drawImage(bmp, 0, 0);
+      return Array.from(ctx.getImageData(Math.round(bmp.width * 0.2), Math.round(bmp.height * 0.2), 1, 1).data.slice(0, 3));
+    }, b64);
+  };
+  const hidden = await safePixel();
+  await panel.getByRole('button', { name: 'Remove area 1' }).click();
+  const shown = await safePixel(); // only the detected details now
+  check('the safe image hides the marked area (and only because it was marked)', hidden.every((v) => v === 17) && !shown.every((v) => v === 17), `marked: ${hidden.join(',')} · unmarked: ${shown.join(',')}`);
+  await panel.getByRole('button', { name: 'Done' }).click();
 
   if (existsSync(videoPath)) {
     await site.goto(`${SITE}/video`);

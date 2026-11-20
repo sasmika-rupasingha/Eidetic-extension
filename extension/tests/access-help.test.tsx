@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { Home, type AccessHelp } from '../src/ui/panel/Home';
 
 const listener = { addListener: vi.fn(), removeListener: vi.fn() };
@@ -52,6 +52,33 @@ describe('capture access help', () => {
     expect(screen.queryByRole('button', { name: 'Allow on all sites' })).toBeNull();
     screen.getByRole('button', { name: 'Open Eidetic’s details' }).click();
     expect(chrome.tabs.create).toHaveBeenCalledWith({ url: 'chrome://extensions/?id=test-id' });
+  });
+
+  it('in Firefox, names Firefox and explains the way to its settings instead of opening a page it forbids', async () => {
+    vi.resetModules();
+    const realNavigator = navigator;
+    onTestFinished(() => void vi.stubGlobal('navigator', realNavigator));
+    vi.stubGlobal('navigator', { ...navigator, userAgent:'Mozilla/5.0 (Windows NT 10.0; rv:160.0) Gecko/20100101 Firefox/160.0' });
+    const { Home: FirefoxHome } = await import('../src/ui/panel/Home');
+    render(
+      <FirefoxHome
+        captures={[]}
+        selecting={false}
+        access={{ mode: 'area', reason: 'browser-page' }}
+        captureError={null}
+        onDismissError={() => undefined}
+        onCapture={() => undefined}
+        onAllowAll={() => undefined}
+        onOpen={() => undefined}
+        onLibrary={() => undefined}
+        toast={() => undefined}
+      />,
+    );
+    const help = screen.getByTestId('access-help').textContent ?? '';
+    expect(help).toMatch(/Firefox doesn’t let extensions capture this page/);
+    expect(help).not.toMatch(/Chrome/);
+    expect(help).toMatch(/Add-ons and themes/);
+    expect(screen.queryByRole('button', { name: 'Open Eidetic’s details' })).toBeNull();
   });
 
   it('shows other capture failures as an error card', () => {

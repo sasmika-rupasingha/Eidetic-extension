@@ -7,7 +7,7 @@ import { route, isRoute, type Route } from '../../ai/router';
 import { describeError, readyMap, runAi, type Statuses } from '../../ai/run';
 import type { ChatMessage } from '../../ai/types';
 import { CATEGORY_LABEL } from '../../detect/classify';
-import { redactImage } from '../../privacy/redact';
+import { redactImage, type RedactStyle } from '../../privacy/redact';
 import { base64Of, blobToDataUrl, mimeOf, shrinkForModel } from '../../shared/image';
 import { getImage, updateCapture, type Capture } from '../../store/captures';
 import { PROVIDER_INFO, type Settings } from '../../store/settings';
@@ -161,11 +161,11 @@ export function useActions(capture: Capture | null | undefined, s: Settings | nu
   const stop = useCallback(() => abort.current?.abort(), []);
 
   const safeImage = useCallback(
-    async (boxes: Parameters<typeof redactImage>[1]) => {
+    async (boxes: Parameters<typeof redactImage>[1], style: RedactStyle = 'black', exact: Parameters<typeof redactImage>[3] = []) => {
       if (!capture) return;
       const blob = await getImage(capture.image.blobId);
       if (!blob) return;
-      download(await redactImage(blob, boxes, 'black'), `eidetic-${String(capture.number).padStart(4, '0')}-safe.png`);
+      download(await redactImage(blob, boxes, style, exact), `eidetic-${String(capture.number).padStart(4, '0')}-safe.png`);
       toast('Safe image downloaded. The original is unchanged.');
     },
     [capture, toast],

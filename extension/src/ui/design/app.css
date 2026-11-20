@@ -96,6 +96,16 @@ ul.plain li { margin: 2px 0; }
 .croppick { display: flex; flex-direction: column; gap: 10px; }
 .croppick-stage { position: relative; cursor: crosshair; user-select: none; touch-action: none; }
 .croppick-stage img { display: block; width: 100%; border-radius: var(--r-xs); }
+.hide-open { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); }
+.hide-areas { display: flex; flex-direction: column; gap: 10px; }
+.hide-stage:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+/* Areas look like the result: a dark block (as in the downloaded copy), outlined so they stay visible on dark images. */
+.hide-area { position: absolute; background: rgba(8, 9, 11, 0.78); border: 1.5px solid var(--accent); border-radius: 2px; cursor: pointer; }
+.hide-area.selected { box-shadow: 0 0 0 3px var(--accent-soft); border-width: 2px; }
+.hide-area.detected { background: rgba(8, 9, 11, 0.6); border-style: dashed; pointer-events: none; }
+.hide-area.drafting { pointer-events: none; background: rgba(8, 9, 11, 0.45); }
+.hide-list { display: flex; flex-direction: column; gap: 4px; }
+@media (prefers-reduced-motion: no-preference) { .hide-area { transition: box-shadow var(--t-fast) var(--ease); } }
 .croppick-box { position: absolute; border: 1.5px solid var(--accent); box-shadow: 0 0 0 9999px rgba(8, 9, 11, 0.45); pointer-events: none; }
 
 /* ---------------------------------------------------------------- ask and onboarding */

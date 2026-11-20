@@ -18,7 +18,7 @@ See something → Capture it → Understand it → Connect it → Use it.
 - **Private mode.** Only models on this computer, enforced twice (router and request layer).
 - **Library.** Typo-tolerant local search over text, descriptions, notes, page titles and video titles, with the reason for each match. Temporary captures expire unless you keep, pin, annotate or act on them.
 - **Video moments.** The timestamp of a paused video and a resume link where the site supports one (YouTube, video files).
-- **Privacy Shield.** Finds emails, phone numbers, ID numbers, card numbers, API keys, tokens and passwords; copies a masked version or downloads a blacked-out image. The original is never changed.
+- **Privacy Shield.** Finds emails, phone numbers, ID numbers, card numbers, API keys, tokens and passwords; copies a masked version or downloads a blacked-out image, and lets you mark anything else to hide (black out or pixelate). The original is never changed.
 - **Light, dark and system themes**, four accent colours, keyboard support and reduced motion.
 
 What comes next (Visual Memory connections, multi-capture comparison, Study notebooks, monitoring) and what's not done yet: [docs/status.md](docs/status.md).
@@ -42,7 +42,7 @@ Load `extension\dist\chromium` at `chrome://extensions` (Developer mode › Load
 | | |
 |---|---|
 | `npm test` | 87 unit tests: content detection, routing (Auto/Manual/Private), privacy detectors, search, actions, calendar and vCard export, video links, the capture store, settings, prompts, provider wire formats and model discovery |
-| `npm run e2e` | Loads the built extension into real Chromium: 52 checks with a test site, a mock Ollama and a mock cloud provider, covering capture → OCR → detection → actions → streamed answers, follow-ups, local-only refinement, Private mode, privacy findings, video moments, the PDF viewer, library search, AI settings, themes and the first-capture access help |
+| `npm run e2e` | Loads the built extension into real Chromium: 55 checks with a test site, a mock Ollama and a mock cloud provider, covering capture → OCR → detection → actions → streamed answers, follow-ups, local-only refinement, Private mode, privacy findings, video moments, the PDF viewer, library search, AI settings, themes and the first-capture access help |
 
 ## Project
 

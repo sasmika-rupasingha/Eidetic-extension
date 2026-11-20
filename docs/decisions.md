@@ -43,3 +43,6 @@ Users can rewrite each profile's answer style (up to 600 characters, Settings â€
 
 ### D14. Reading a capture again in another language
 A capture can be read again in a language chosen for it alone; the choice is stored on the capture (`ocrLangs`) and Settings stay the default for new captures. A language other than English is always read together with English, because slides and screenshots usually mix scripts. Reading again re-runs detection and the privacy scan and clears the AI description (it described the old text); saved answers and notes stay. The e2e run re-reads in English only, since other languages are downloaded from jsDelivr.
+
+### D15. Hiding areas by hand: rectangles, not a free brush
+The "blur brush" is a rectangle tool: drag, or use the keyboard (Enter adds, arrow keys move, Shift+arrow keys resize, Delete removes), so it works without a mouse and hides whole areas exactly. Areas are kept as fractions of the image and are not saved with the capture; only the downloaded safe copy changes. Hand-drawn areas are hidden exactly as drawn (detected details keep their small padding). Black out is the default; pixelate uses cells at least a third of the area's height so text can't be read back.
