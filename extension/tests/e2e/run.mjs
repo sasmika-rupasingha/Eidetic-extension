@@ -254,6 +254,18 @@ try {
   check('the panel shows Private mode', /Private/.test((await panel.locator('.mode-chip').textContent()) ?? ''));
   await setSettings({ mode: 'auto' });
 
+  section('A page Chrome never lets extensions capture');
+  const browserPage = await ctx.newPage();
+  await browserPage.goto('chrome://version').catch(() => undefined);
+  await browserPage.bringToFront();
+  await panel.getByRole('button', { name: 'Capture', exact: true }).click();
+  await panel.click('[data-testid=capture]');
+  const reason = await until(async () => panel.locator('[data-testid=access-help]').getAttribute('data-reason', { timeout: 500 }), 10_000);
+  check('with access to all sites, says it’s a browser page instead of asking for access again', reason === 'browser-page', String(reason));
+  check('and shows no “Couldn’t capture” error as well', (await panel.locator('[data-testid=capture-error]').count()) === 0);
+  await browserPage.close();
+  await site.bringToFront();
+
   section('Library search');
   await panel.getByRole('button', { name: 'Library', exact: true }).click();
   await panel.fill('#lib-q', 'pandsa');

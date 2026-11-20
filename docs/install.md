@@ -34,7 +34,7 @@ After any code change: `npm run build`, then press the reload icon on Eidetic's 
 
 Change them at `chrome://extensions/shortcuts`.
 
-**First capture on a site:** Chrome only shows a page to an extension after you click its toolbar icon on that page, use the shortcut or the right-click menu. If you press the panel's Capture button on a page Eidetic can't see yet, the panel tells you the two ways in (shortcut on the page, or Allow on all sites). If Eidetic is already allowed on all sites and a page still can't be captured, the panel says why instead: files opened from your computer (`file://`) also need **Allow access to file URLs** in Eidetic's details on `chrome://extensions`, and Chrome's site settings or an organisation policy can block extensions on a site.
+**First capture on a site:** Chrome only shows a page to an extension after you click its toolbar icon on that page, use the shortcut or the right-click menu. If you press the panel's Capture button on a page Eidetic can't see yet, the panel tells you the two ways in (shortcut on the page, or Allow on all sites). If Eidetic is already allowed on all sites and a page still can't be captured, the panel says why instead: Chrome never lets extensions capture the new tab page, `chrome://` pages or the Web Store; files opened from your computer (`file://`) also need **Allow access to file URLs** in Eidetic's details on `chrome://extensions`, and Chrome's site settings or an organisation policy can block extensions on a site.
 
 ## 4. Connect AI (optional)
 

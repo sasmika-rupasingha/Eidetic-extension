@@ -31,8 +31,10 @@ export function App() {
   /** One message for an access failure: the access help (never also the red error card). */
   const showAccess = useCallback(async (mode: 'area' | 'full') => {
     const granted = await chrome.permissions.contains({ origins: ['<all_urls>'] }).catch(() => false);
+    // With access to all sites Chrome shows Eidetic every website's address; a hidden one means a browser page or a local file.
+    const hidden = granted && !(await activeTab().catch(() => undefined))?.url;
     setCaptureError(null);
-    setAccess({ mode, granted });
+    setAccess({ mode, reason: !granted ? 'ask' : hidden ? 'browser-page' : 'blocked' });
   }, []);
 
   // Follow captures taken from the shortcut, the right-click menu or the panel.

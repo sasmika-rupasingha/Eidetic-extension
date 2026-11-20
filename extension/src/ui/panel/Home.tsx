@@ -7,8 +7,14 @@ import { CaptureRow, Empty } from '../shared/components';
 
 export interface AccessHelp {
   mode: 'area' | 'full';
-  /** Eidetic already has access to all sites, so asking again won't help: something else blocks this page. */
-  granted: boolean;
+  /**
+   * Why the page can't be captured:
+   * - `ask`: Eidetic hasn't been given access yet (offer the shortcut or "Allow on all sites").
+   * - `browser-page`: Eidetic is allowed on all sites, yet Chrome still hides the page's address, so it's a page outside
+   *   "all sites": the new tab page, a chrome:// page, the Web Store, or a local file without file access.
+   * - `blocked`: Eidetic can see the page but Chrome still refuses (site settings, a policy, or a page opened earlier).
+   */
+  reason: 'ask' | 'browser-page' | 'blocked';
 }
 
 export function Home({
@@ -121,16 +127,28 @@ export function Home({
           </div>
         ) : null}
 
-        {access?.granted ? (
-          <div className="note accent" role="alert" data-testid="access-help" data-granted="true">
+        {access && access.reason !== 'ask' ? (
+          <div className="note accent" role="alert" data-testid="access-help" data-reason={access.reason}>
             <IconInfo size={16} />
             <div className="stack tight">
-              <div>Eidetic is allowed on all sites, but Chrome still blocks this page. Usually that’s because:</div>
-              <ul className="plain">
-                <li>it’s a file on your computer: turn on “Allow access to file URLs” in Eidetic’s details, or</li>
-                <li>Chrome’s site settings or your organisation block extensions on this site, or</li>
-                <li>the page opened before Eidetic was allowed: reload it and try again.</li>
-              </ul>
+              {access.reason === 'browser-page' ? (
+                <>
+                  <div>Chrome doesn’t let extensions capture this page. It’s one of:</div>
+                  <ul className="plain">
+                    <li>a new tab, or a Chrome page such as Settings or Extensions: open a normal website and capture there,</li>
+                    <li>the Chrome Web Store, or</li>
+                    <li>a file on your computer: turn on “Allow access to file URLs” in Eidetic’s details.</li>
+                  </ul>
+                </>
+              ) : (
+                <>
+                  <div>Eidetic is allowed on all sites, but Chrome still blocks this page. Usually that’s because:</div>
+                  <ul className="plain">
+                    <li>the page opened before Eidetic was allowed: reload it and try again, or</li>
+                    <li>Chrome’s site settings or your organisation block extensions on this site.</li>
+                  </ul>
+                </>
+              )}
               <div className="row-gap">
                 <button type="button" className="btn small soft" onClick={() => onCapture(access.mode)}>
                   Try again

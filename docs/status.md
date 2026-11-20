@@ -41,13 +41,14 @@ What is finished, what isn't, and what is known to be limited. Nothing listed as
 ## Test results (20 Nov 2026)
 
 - Types: clean. Lint (oxlint): clean.
-- Unit: 90/90 passed (13 files), about 8 s. Tests run in Node; only the files that render React (`markdown.test.tsx`, `access-help.test.tsx`) use jsdom.
-- End-to-end: 42/42 run checks passed in Edge 157 via `CHROME_PATH` (OCR, detection, actions, streaming answers, follow-ups, local-only refinement, Auto vs Private routing against a mock cloud provider, privacy, PDF viewer, search, AI settings, themes, access help shown as one message). The 3 video checks were skipped (no ffmpeg on this PC). Playwright's Chromium 159 (build 1255) doesn't start on Windows 11 build 26300 ("side-by-side configuration is incorrect").
+- Unit: 91/91 passed (13 files), about 8 s. Tests run in Node; only the files that render React (`markdown.test.tsx`, `access-help.test.tsx`) use jsdom.
+- End-to-end: 44/44 run checks passed in Edge 157 via `CHROME_PATH` (OCR, detection, actions, streaming answers, follow-ups, local-only refinement, Auto vs Private routing against a mock cloud provider, privacy, PDF viewer, browser pages, search, AI settings, themes, access help shown as one message). The 3 video checks were skipped (no ffmpeg on this PC). Playwright's Chromium 159 (build 1255) doesn't start on Windows 11 build 26300 ("side-by-side configuration is incorrect").
 
 ## Fixed after v1.0.0 (20 Nov 2026)
 
 - A capture refused for lack of access showed both a red "Couldn't capture" error and the access help; it now shows only the access help.
-- When Eidetic is already allowed on all sites but a page still refuses capture, the panel no longer asks for access again. It explains the likely cause (local files need "Allow access to file URLs", site settings or a policy blocking extensions, or a page opened before access was given) and links to Eidetic's details.
+- When Eidetic is already allowed on all sites but a page still refuses capture, the panel no longer asks for access again. If Chrome hides the page's address (new tab, `chrome://` pages, the Web Store, a local file without "Allow access to file URLs") it says the page can't be captured and what to do; otherwise it suggests reloading the page or checking site settings, and links to Eidetic's details. Before, Eidetic only recognised browser pages when it could read their address, which Chrome hides.
+- Chrome's Summarizer API is now always asked with an output language, so the "No output language was specified" warning no longer appears under the extension's Errors.
 
 ## Security and performance notes
 

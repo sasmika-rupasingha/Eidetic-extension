@@ -28,7 +28,7 @@ interface DetectorStatic {
   create(): Promise<{ detect(t: string): Promise<Array<{ detectedLanguage: string; confidence: number }>>; destroy(): void }>;
 }
 interface SummarizerStatic {
-  availability(): Promise<Availability>;
+  availability(opts?: unknown): Promise<Availability>;
   create(opts: unknown): Promise<{ summarize(t: string, o?: { context?: string; signal?: AbortSignal }): Promise<string>; destroy(): void }>;
 }
 
@@ -43,6 +43,8 @@ export interface BuiltinStatus {
 
 const LANG_OPTS = { expectedInputs: [{ type: 'text', languages: ['en'] }], expectedOutputs: [{ type: 'text', languages: ['en'] }] };
 const IMAGE_OPTS = { expectedInputs: [{ type: 'text', languages: ['en'] }, { type: 'image' }], expectedOutputs: [{ type: 'text', languages: ['en'] }] };
+/** Chrome warns (and lists it under the extension's Errors) when the Summarizer is asked anything without a language. */
+const SUMMARY_LANG = { expectedInputLanguages: ['en'], outputLanguage: 'en' };
 
 export async function builtinStatus(): Promise<BuiltinStatus> {
   const safe = async (f: () => Promise<Availability>): Promise<Availability> => {
@@ -56,7 +58,7 @@ export async function builtinStatus(): Promise<BuiltinStatus> {
     prompt: g.LanguageModel ? await safe(() => g.LanguageModel!.availability(LANG_OPTS)) : 'unavailable',
     image: g.LanguageModel ? await safe(() => g.LanguageModel!.availability(IMAGE_OPTS)) : 'unavailable',
     translator: Boolean(g.Translator),
-    summarizer: g.Summarizer ? await safe(() => g.Summarizer!.availability()) : 'unavailable',
+    summarizer: g.Summarizer ? await safe(() => g.Summarizer!.availability(SUMMARY_LANG)) : 'unavailable',
   };
 }
 
@@ -135,8 +137,8 @@ export async function translateBuiltin(text: string, target: string): Promise<st
 export async function summarizeBuiltin(text: string, type: 'key-points' | 'tldr', context: string, signal?: AbortSignal): Promise<string | null> {
   if (!g.Summarizer) return null;
   try {
-    if ((await g.Summarizer.availability()) !== 'available') return null;
-    const s = await g.Summarizer.create({ type, format: 'markdown', length: 'medium', sharedContext: context, expectedInputLanguages: ['en'], outputLanguage: 'en' });
+    if ((await g.Summarizer.availability(SUMMARY_LANG)) !== 'available') return null;
+    const s = await g.Summarizer.create({ type, format: 'markdown', length: 'medium', sharedContext: context, ...SUMMARY_LANG });
     const out = await s.summarize(text, { signal });
     s.destroy();
     return out;
