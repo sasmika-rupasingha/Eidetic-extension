@@ -1,7 +1,10 @@
 /** Library in the panel: search everything you captured, filter by kind, see why each result matched. */
 import { useDeferredValue, useMemo, useState } from 'react';
 import { FIELD_LABEL, search, type Filter } from '../../search/search';
+import type { Statuses } from '../../ai/run';
 import type { Capture } from '../../store/captures';
+import type { Settings } from '../../store/settings';
+import { MeaningResults } from '../shared/MeaningResults';
 import { IconClose, IconSearch } from '../design/icons';
 import { CaptureRow, Empty } from '../shared/components';
 
@@ -33,7 +36,7 @@ export function MatchReason({ m }: { m: ReturnType<typeof search>[number] }) {
   );
 }
 
-export function LibraryView({ captures, onOpen, onWorkspace }: { captures: Capture[] | null; onOpen: (id: string) => void; onWorkspace: () => void }) {
+export function LibraryView({ captures, onOpen, onWorkspace, settings, statuses }: { captures: Capture[] | null; onOpen: (id: string) => void; onWorkspace: () => void; settings: Settings; statuses: Statuses }) {
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const dq = useDeferredValue(q);
@@ -71,10 +74,11 @@ export function LibraryView({ captures, onOpen, onWorkspace }: { captures: Captu
       {captures && !captures.length ? (
         <Empty title="Your library is empty">Everything you capture is saved here, searchable by its text, your notes and where it came from.</Empty>
       ) : captures && !results.length ? (
-        <Empty title="No matches">Try fewer words, or a word you remember from the capture or your note.</Empty>
+        <Empty title="No word matches">Try fewer words, or a word you remember from the capture or your note.</Empty>
       ) : (
         results.slice(0, 200).map((m) => <CaptureRow key={m.capture.id} capture={m.capture} onOpen={() => onOpen(m.capture.id)} extra={q ? <MatchReason m={m} /> : null} />)
       )}
+      {q ? <MeaningResults captures={captures} query={dq} settings={settings} statuses={statuses} exclude={results.map((m) => m.capture.id)} onOpen={onOpen} /> : null}
       {captures && captures.length > 6 ? (
         <button type="button" className="btn ghost small" onClick={onWorkspace}>
           Open the library in a full tab

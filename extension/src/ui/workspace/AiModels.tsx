@@ -8,6 +8,8 @@ import { candidates, isRoute, route } from '../../ai/router';
 import { describeError, readyMap, testModel, type Statuses } from '../../ai/run';
 import { cleanBaseUrl, PROFILE_STYLE_MAX, PROVIDER_IDS, PROVIDER_INFO, TASK_CLASS_LABEL, TASK_CLASSES, isLocal, updateSettings, type Mode, type ProfileId, type ProviderId, type Settings } from '../../store/settings';
 import { IconLock, IconRefresh } from '../design/icons';
+import { SemanticSettings } from './SemanticSettings';
+import type { Capture } from '../../store/captures';
 
 const MODES: Array<[Mode, string, string]> = [
   ['auto', 'Auto', 'Picks the best ready model for each task.'],
@@ -65,7 +67,7 @@ function ProfileStyleEditor({ profile, custom, toast }: { profile: ProfileId; cu
   );
 }
 
-export function AiModels({ settings: s, statuses, checking, refresh, toast }: { settings: Settings; statuses: Statuses; checking: boolean; refresh: (only?: ProviderId) => Promise<void>; toast: (m: string) => void }) {
+export function AiModels({ settings: s, statuses, checking, refresh, toast, captures }: { settings: Settings; statuses: Statuses; checking: boolean; refresh: (only?: ProviderId) => Promise<void>; toast: (m: string) => void; captures?: Capture[] | null }) {
   const [open, setOpen] = useState<ProviderId | null>(null);
   const [form, setForm] = useState<{ apiKey: string; baseUrl: string }>({ apiKey: '', baseUrl: '' });
   const [busy, setBusy] = useState<string | null>(null);
@@ -470,6 +472,7 @@ export function AiModels({ settings: s, statuses, checking, refresh, toast }: { 
           </table>
         </div>
       </section>
+      <SemanticSettings settings={s} statuses={statuses} captures={captures ?? null} />
     </div>
   );
 }

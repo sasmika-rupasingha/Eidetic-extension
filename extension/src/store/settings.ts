@@ -72,6 +72,8 @@ export interface Settings {
   translateTo: string;
   searchEngine: 'google' | 'bing' | 'duckduckgo';
   onboarded: boolean;
+  /** Search by meaning with a local embedding model; model is 'ollama:name' / 'lmstudio:name', or '' to pick one automatically. */
+  semantic: { enabled: boolean; model: string };
 }
 
 export interface ProviderInfo {
@@ -136,6 +138,7 @@ export function defaultSettings(): Settings {
     translateTo: 'en',
     searchEngine: 'google',
     onboarded: false,
+    semantic: { enabled: true, model: '' },
   };
 }
 
@@ -206,6 +209,11 @@ export function validateSettings(raw: unknown): Settings {
     translateTo: oneOf(r.translateTo, Object.keys(TRANSLATE_LANGUAGES), d.translateTo),
     searchEngine: oneOf(r.searchEngine, ['google', 'bing', 'duckduckgo'] as const, d.searchEngine),
     onboarded: Boolean(r.onboarded),
+    semantic: (() => {
+      const sm = (r.semantic && typeof r.semantic === 'object' ? r.semantic : {}) as Record<string, unknown>;
+      const model = str(sm.model, '', 240);
+      return { enabled: typeof sm.enabled === 'boolean' ? sm.enabled : true, model: /^(ollama|lmstudio):.+/.test(model) ? model : '' };
+    })(),
   };
 }
 

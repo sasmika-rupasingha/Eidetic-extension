@@ -121,3 +121,7 @@
 :root[data-theme='dark'] {
   --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
 }
+
+/* ---------------------------------------------------------------- workspace colours (the four accents, both themes) */
+:root { --ws-ultramarine: #2f45d8; --ws-vermilion: #b23a22; --ws-moss: #3b6726; --ws-graphite: #1a1916; }
+:root[data-theme='dark'] { --ws-ultramarine: #97a3ff; --ws-vermilion: #ff8f75; --ws-moss: #a8d385; --ws-graphite: #ece9e2; }
