@@ -1,0 +1,190 @@
+/** Capture home: what tab you're on, one clear Capture button, other ways in, and recent captures. */
+import { useEffect, useRef, useState } from 'react';
+import { activeTab, RESTRICTED, saveBlob } from '../../capture/capture';
+import { siteOf, type Capture } from '../../store/captures';
+import { IconCapture, IconInfo, IconLock } from '../design/icons';
+import { CaptureRow, Empty } from '../shared/components';
+
+export interface AccessHelp {
+  mode: 'area' | 'full';
+}
+
+export function Home({
+  captures,
+  selecting,
+  access,
+  captureError,
+  onDismissError,
+  onCapture,
+  onAllowAll,
+  onOpen,
+  onLibrary,
+  toast,
+}: {
+  captures: Capture[] | null;
+  selecting: boolean;
+  access: AccessHelp | null;
+  captureError: string | null;
+  onDismissError: () => void;
+  onCapture: (mode: 'area' | 'full') => void;
+  onAllowAll: () => void;
+  onOpen: (id: string) => void;
+  onLibrary: () => void;
+  toast: (m: string) => void;
+}) {
+  const [tab, setTab] = useState<{ title?: string; url?: string } | null>(null);
+  const file = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const load = () => void activeTab().then((t) => setTab(t ? { title: t.title, url: t.url } : null));
+    load();
+    chrome.tabs.onActivated.addListener(load);
+    chrome.tabs.onUpdated.addListener(load);
+    return () => {
+      chrome.tabs.onActivated.removeListener(load);
+      chrome.tabs.onUpdated.removeListener(load);
+    };
+  }, []);
+
+  const restricted = Boolean(tab?.url && RESTRICTED.test(tab.url));
+  const known = Boolean(tab?.url);
+
+  const paste = async () => {
+    try {
+      const items = await navigator.clipboard.read();
+      for (const it of items) {
+        const type = it.types.find((t) => t.startsWith('image/'));
+        if (type) {
+          await saveBlob(await it.getType(type), { url: '', title: 'Pasted image', site: 'Clipboard' });
+          return;
+        }
+      }
+      toast('No image on the clipboard. Copy one, then press Ctrl+V here.');
+    } catch {
+      toast('Press Ctrl+V in the panel to paste an image.');
+    }
+  };
+
+  return (
+    <div className="home">
+      <section aria-label="Capture" className="stack">
+        <div className="viewfinder">
+          <span className="vf tl" />
+          <span className="vf tr" />
+          <span className="vf bl" />
+          <span className="vf br" />
+          <div className="eyebrow">This tab</div>
+          {known ? (
+            <>
+              <div className="serif vf-title">{tab?.title || 'Untitled page'}</div>
+              <div className="meta">{siteOf(tab!.url!)}</div>
+            </>
+          ) : (
+            <div className="serif vf-title">Capture anything visible on the page</div>
+          )}
+          <div className="vf-note small muted">
+            {restricted ? (
+              <>
+                <IconInfo size={15} />
+                <span>Browser pages and extension stores can’t be captured. Open a normal web page.</span>
+              </>
+            ) : selecting ? (
+              <>
+                <span className="spinner" />
+                <span>Select an area on the page. Press Esc to cancel.</span>
+              </>
+            ) : (
+              <>
+                <IconLock size={15} />
+                <span>{known ? 'Captures stay on this computer. Text is read offline.' : 'Eidetic only sees a page when you capture it. Chrome may ask once per site.'}</span>
+              </>
+            )}
+          </div>
+        </div>
+
+        {captureError ? (
+          <div className="note err" role="alert" data-testid="capture-error">
+            <IconInfo size={16} />
+            <div className="stack tight">
+              <div>Couldn’t capture: {captureError}</div>
+              <div className="row-gap">
+                <button type="button" className="btn small" onClick={() => onCapture('area')}>
+                  Try again
+                </button>
+                <button type="button" className="btn small ghost" onClick={onDismissError}>
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {access ? (
+          <div className="note accent" role="alert" data-testid="access-help">
+            <IconInfo size={16} />
+            <div className="stack tight">
+              <div>Chrome hasn’t given Eidetic access to this page yet. Either:</div>
+              <ul className="plain">
+                <li>
+                  click the page, then press <span className="kbd">Alt</span> <span className="kbd">Shift</span> <span className="kbd">E</span> (or right-click › Capture an area), or
+                </li>
+                <li>allow Eidetic on all sites, so this button works everywhere.</li>
+              </ul>
+              <div>
+                <button type="button" className="btn small soft" onClick={onAllowAll}>
+                  Allow on all sites
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        <button type="button" data-testid="capture" className="btn primary large" onClick={() => onCapture('area')} disabled={restricted || selecting}>
+          <span className="row-gap">
+            <IconCapture size={18} />
+            Capture an area
+          </span>
+          <span className="mono small">Alt Shift E</span>
+        </button>
+        <div className="btn-row">
+          <button type="button" className="btn" onClick={() => onCapture('full')} disabled={restricted || selecting}>
+            Full screen
+          </button>
+          <button type="button" className="btn" onClick={() => void paste()}>
+            Paste image
+          </button>
+          <button type="button" className="btn" onClick={() => file.current?.click()}>
+            Open file
+          </button>
+          <input
+            ref={file}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void saveBlob(f, { url: '', title: f.name, site: 'File' });
+              e.target.value = '';
+            }}
+          />
+        </div>
+      </section>
+
+      <section aria-label="Recent captures" className="recent">
+        <div className="section-head">
+          <h2 className="h-section">Recent</h2>
+          {captures?.length ? (
+            <button type="button" className="linkish small" onClick={onLibrary}>
+              Library ›
+            </button>
+          ) : null}
+        </div>
+        {captures === null ? null : captures.length ? (
+          captures.slice(0, 4).map((c) => <CaptureRow key={c.id} capture={c} onOpen={() => onOpen(c.id)} />)
+        ) : (
+          <Empty title="Nothing captured yet">Capture part of any page: a slide, an error, a table, a poster. Eidetic reads it and suggests what to do next.</Empty>
+        )}
+      </section>
+    </div>
+  );
+}

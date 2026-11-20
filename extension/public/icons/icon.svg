@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Eidetic mark: crop marks around a remembered point -->
+  <rect width="128" height="128" rx="28" fill="#1A1916"/>
+  <g fill="none" stroke="#F3F0E8" stroke-width="10" stroke-linecap="round">
+    <path d="M28 50V36a8 8 0 0 1 8-8h14"/>
+    <path d="M78 28h14a8 8 0 0 1 8 8v14"/>
+    <path d="M100 78v14a8 8 0 0 1-8 8H78"/>
+    <path d="M50 100H36a8 8 0 0 1-8-8V78"/>
+  </g>
+  <circle cx="74" cy="54" r="13" fill="#97A3FF"/>
+</svg>

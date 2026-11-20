@@ -1,0 +1,123 @@
+/*
+ * Eidetic design tokens. Every colour, size and motion value in the interface comes from here; components never
+ * hard-code colours. Light ("archive paper") and dark ("graphite") are designed separately, not inverted.
+ * The theme is set on <html data-theme="light|dark"> before first paint (theme-boot.ts), and the accent on
+ * data-accent, so switching is instant and never flashes.
+ */
+@import '@fontsource-variable/schibsted-grotesk/wght.css';
+@import '@fontsource-variable/newsreader/opsz.css';
+@import '@fontsource/ibm-plex-mono/latin-400.css';
+@import '@fontsource/ibm-plex-mono/latin-500.css';
+
+:root {
+  --font-ui: 'Schibsted Grotesk Variable', 'Schibsted Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-serif: 'Newsreader Variable', 'Newsreader', Georgia, 'Times New Roman', serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
+
+  --fs-2xs: 11px;
+  --fs-xs: 11.5px;
+  --fs-sm: 12.5px;
+  --fs-md: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 19px;
+  --fs-2xl: 22px;
+  --fs-3xl: 32px;
+
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 20px;
+  --s6: 24px;
+  --s8: 32px;
+
+  --r-xs: 3px;
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 10px;
+  --r-pill: 999px;
+
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --t-fast: 110ms;
+  --t: 170ms;
+
+  --tap: 44px;
+}
+
+/* ---------------------------------------------------------------- light: warm archive paper */
+:root,
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f3f0e8;
+  --surface: #faf8f3;
+  --raised: #ffffff;
+  --sunk: #eae6dc;
+  --line: #dcd6c8;
+  --line-strong: #c3bba9;
+  --text: #1a1916;
+  --muted: #615d54;
+  --disabled: #9b968b;
+  --hover: rgba(26, 25, 22, 0.05);
+  --active: rgba(26, 25, 22, 0.09);
+  --ok: #2d7849;
+  --ok-soft: rgba(45, 120, 73, 0.1);
+  --warn: #8c5c07;
+  --warn-soft: rgba(140, 92, 7, 0.1);
+  --err: #ad3325;
+  --err-soft: rgba(173, 51, 37, 0.09);
+  --code: #1b1c1f;
+  --code-text: #e8e5dd;
+  --code-dim: #a39f96;
+  --shadow-1: 0 1px 2px rgba(26, 25, 22, 0.06);
+  --shadow-2: 0 1px 2px rgba(26, 25, 22, 0.06), 0 12px 30px rgba(26, 25, 22, 0.1);
+  --scrim: rgba(26, 25, 22, 0.32);
+}
+
+/* ---------------------------------------------------------------- dark: layered graphite */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #131416;
+  --surface: #18191c;
+  --raised: #1f2024;
+  --sunk: #0e0f11;
+  --line: #2a2c31;
+  --line-strong: #3a3d44;
+  --text: #ece9e2;
+  --muted: #a39f96;
+  --disabled: #6a675f;
+  --hover: rgba(236, 233, 226, 0.05);
+  --active: rgba(236, 233, 226, 0.09);
+  --ok: #7fcb98;
+  --ok-soft: rgba(127, 203, 152, 0.12);
+  --warn: #e3b25c;
+  --warn-soft: rgba(227, 178, 92, 0.12);
+  --err: #ff8d7d;
+  --err-soft: rgba(255, 141, 125, 0.12);
+  --code: #0e0f11;
+  --code-text: #e4e1d9;
+  --code-dim: #8b877f;
+  --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+  --shadow-2: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 14px 36px rgba(0, 0, 0, 0.5);
+  --scrim: rgba(0, 0, 0, 0.5);
+}
+
+/* ---------------------------------------------------------------- accents (restrained; one per theme) */
+:root,
+:root[data-accent='ultramarine'] { --accent: #2f45d8; --on-accent: #ffffff; }
+:root[data-theme='dark'],
+:root[data-theme='dark'][data-accent='ultramarine'] { --accent: #97a3ff; --on-accent: #0e0f11; }
+:root[data-accent='vermilion'] { --accent: #b23a22; --on-accent: #ffffff; }
+:root[data-theme='dark'][data-accent='vermilion'] { --accent: #ff8f75; --on-accent: #0e0f11; }
+:root[data-accent='moss'] { --accent: #3b6726; --on-accent: #ffffff; }
+:root[data-theme='dark'][data-accent='moss'] { --accent: #a8d385; --on-accent: #0e0f11; }
+:root[data-accent='graphite'] { --accent: #1a1916; --on-accent: #ffffff; }
+:root[data-theme='dark'][data-accent='graphite'] { --accent: #ece9e2; --on-accent: #0e0f11; }
+
+:root {
+  --accent-soft: color-mix(in srgb, var(--accent) 9%, transparent);
+  --accent-line: color-mix(in srgb, var(--accent) 38%, transparent);
+  --focus: var(--accent);
+}
+:root[data-theme='dark'] {
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
+}

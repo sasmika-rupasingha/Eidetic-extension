@@ -1,0 +1,22 @@
+# Secrets
+.env
+*.pem
+
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Editors / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Test output
+shots/
+test-results/
+playwright-report/
+web-ext-artifacts/
+release/
