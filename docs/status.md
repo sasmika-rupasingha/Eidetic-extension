@@ -41,7 +41,7 @@ What is finished, what isn't, and what is known to be limited. Nothing listed as
 ## Test results (20 Nov 2026)
 
 - Types: clean. Lint (oxlint): clean.
-- Unit: 87/87 passed (15 files).
+- Unit: 87/87 passed (12 files), about 7 s. Tests run in Node; only `markdown.test.tsx` uses jsdom.
 - End-to-end in real Chromium: 44/44 passed (OCR, detection, actions, streaming answers, follow-ups, local-only refinement, Auto vs Private routing against a mock cloud provider, privacy, video moment, PDF viewer, search, AI settings, themes, access help).
 
 ## Security and performance notes
