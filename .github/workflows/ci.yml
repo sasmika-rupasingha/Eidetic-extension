@@ -33,7 +33,7 @@ jobs:
       - run: npm run package
       - name: Firefox add-on linter (AMO rules)
         run: npm run lint:firefox
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: eidetic-extension
           path: extension/dist/*.zip
