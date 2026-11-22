@@ -43,9 +43,13 @@ What is finished, what isn't, and what is known to be limited. Nothing listed as
 ## Test results (20 Nov 2026, v3.0.0)
 
 - Types: clean. Lint (oxlint): clean.
-- Unit: 168/168 passed (24 files), about 11 s. Tests run in Node; the files that render React or need the DOM (`markdown.test.tsx`, `access-help.test.tsx`, `hide-areas.test.tsx`, `monitor.test.ts`) use jsdom.
+- Unit: 169/169 passed (24 files), about 11 s. Tests run in Node; the files that render React or need the DOM (`markdown.test.tsx`, `access-help.test.tsx`, `hide-areas.test.tsx`, `monitor.test.ts`) use jsdom.
 - End-to-end: 86/86 run checks passed in Edge via `CHROME_PATH`; 3 video checks skipped (no ffmpeg on this PC). Besides the v1 checks (OCR, reading again, detection, actions, streaming answers, follow-ups, local-only refinement, Auto vs Private routing, custom answer style, privacy, hiding areas, PDF viewer, browser pages, search, AI settings, themes, access help) the run covers: related captures with reasons and the link back, the topic filter, search by meaning with a mock Ollama `/api/embed` and the indexed count, workspaces (create, assign in bulk, filter, workspace page), compare (side by side, diff, merged table, cloud notice, one `<content index>` block per capture), study notebooks (generate and save, review a card, quiz score, progress, AI learning gaps on request), Capture & Compare (preset area, changed number old → new, added text, image difference), website monitoring (pick a part, check via the offscreen document, change listed, badge set and cleared), duplicates and the storage dashboard, and a full backup: export (no API keys), delete everything, import, library restored.
 - Firefox build: `web-ext lint` 0 errors, 8 warnings (bundled libraries and Chrome-only calls behind a Firefox check, as in v1). Store packages: `dist/eidetic-chromium-3.0.0.zip`, `dist/eidetic-firefox-3.0.0.zip`.
+
+## Fixed after v3.0.0 (22 Nov 2026)
+
+- Ollama or LM Studio with only an embedding model (e.g. `nomic-embed-text`) showed "No models found" and search by meaning stayed off. It now shows "Connected · 1 embedding model only": search by meaning works, and the hint says to download a chat model for AI answers.
 
 ## New in v3.0.0 Watch (20 Nov 2026)
 

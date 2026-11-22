@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { embedText, embedTexts, listEmbedModels, parseEmbedder, pickEmbedder } from '../src/ai/embed';
 import { cosine, needsEmbedding, rankByMeaning } from '../src/search/semantic';
 import { defaultSettings } from '../src/store/settings';
@@ -75,5 +75,21 @@ describe('local embeddings', () => {
   it('builds the text that stands for a capture', () => {
     const t = embedText({ ai: { description: 'Results table', topics: ['ML'] }, notes: 'for the report', ocr: { text: 'Model Accuracy' }, source: { title: 'Results' } });
     expect(t.split('\n')).toEqual(['Results table', 'ML', 'Results', 'for the report', 'Model Accuracy']);
+  });
+});
+
+describe('a local provider with only embedding models', () => {
+  it('counts as connected (for search by meaning) without offering chat models', async () => {
+    const { checkProvider } = await import('../src/ai/hub');
+    const { readyMap } = await import('../src/ai/run');
+    vi.stubGlobal('chrome', { permissions: { contains: async () => true } });
+    const cfg = { ...defaultSettings().providers.ollama, enabled: true };
+    const st = await checkProvider('ollama', cfg, fakeFetch({ '/api/tags': { models: [{ name: 'nomic-embed-text:latest' }] } }));
+    expect(st).toMatchObject({ state: 'ready', message: 'Connected · 1 embedding model only', models: [] });
+    expect(st.hint).toMatch(/ollama pull qwen2.5:7b/);
+    expect(readyMap({ ollama: st })).toEqual({});
+    const none = await checkProvider('ollama', cfg, fakeFetch({ '/api/tags': { models: [] } }));
+    expect(none.state).toBe('error');
+    vi.unstubAllGlobals();
   });
 });

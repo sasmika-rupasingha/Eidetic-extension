@@ -5,6 +5,7 @@
  */
 import { PROVIDER_INFO, type ModelInfo, type ProviderConfig, type ProviderId } from '../store/settings';
 import { builtinStatus } from './builtin';
+import { listEmbedModels } from './embed';
 import { httpError, openaiBase } from './http';
 import { hasProviderPermission } from './permissions';
 import { AiError } from './types';
@@ -128,6 +129,12 @@ export async function checkProvider(id: ProviderId, cfg: ProviderConfig, fetcher
   if (!(await hasProviderPermission(id, cfg))) return { state: 'no-permission', message: 'Not allowed yet', hint: 'Press Connect to let Eidetic contact this address.', models: [], checkedAt: at };
   try {
     const models = await discoverModels(id, cfg, fetcher);
+    // Only embedding models (left out of the chat list): connected, usable for search by meaning, no AI answers.
+    if (!models.length && (id === 'ollama' || id === 'lmstudio')) {
+      const embed = await listEmbedModels(id, cfg, fetcher).catch(() => []);
+      if (embed.length)
+        return { state: 'ready', message: `Connected · ${embed.length} embedding model${embed.length === 1 ? '' : 's'} only`, hint: id === 'ollama' ? 'Search by meaning works. For AI answers, download a chat model too, for example: ollama pull qwen2.5:7b' : 'Search by meaning works. For AI answers, load a chat model in LM Studio too.', models, checkedAt: at };
+    }
     if (!models.length) return { state: 'error', message: 'No models found', hint: id === 'ollama' ? 'Download one first, for example: ollama pull qwen2.5:7b' : id === 'lmstudio' ? 'Download and load a model in LM Studio.' : 'This key has no chat models.', models, checkedAt: at };
     return { state: 'ready', message: `Connected · ${models.length} model${models.length === 1 ? '' : 's'}`, models, checkedAt: at };
   } catch (e) {
